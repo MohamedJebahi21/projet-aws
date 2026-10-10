@@ -1,0 +1,56 @@
+# ==========================================
+# GITIGNORE - Projet Infra AWS FreeTier
+# Protection stricte des secrets et de l'état
+# ==========================================
+
+# Identifiants et Secrets AWS
+.aws/
+*credentials*
+*secret*
+*.pem
+*.key
+*.id_rsa
+*.env
+*.env.*
+!.env.example
+
+# Terraform - État local et caches
+# (L'état DOIT être stocké dans le bucket S3 distant, jamais localement)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+.terraform.tfstate.lock.info
+*.tfvars
+!terraform.tfvars.example
+
+# Binaires et exécutables locaux
+terraform.exe
+terraform
+aws.cmd
+*.zip
+*.tar.gz
+
+# Fichiers de build et IDE
+target/
+*.class
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Bases locales SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs et sorties d'exécution locales
+*.log
+launch-log.txt
+cahier_texte.txt
+scratch/
+
+# Fichiers temporaires système
+tmp/
+*.tmp
