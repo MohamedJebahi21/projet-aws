@@ -21,3 +21,4 @@ Conformément à la règle d'exploitation du projet (§3.1), toute ressource fac
 * **Crédit restant estimé** : **~49,85 USD**
 * **Consommation totale** : **~0,15 USD** (< 1% du budget alloué)
 * **Objectif cible contractuel** : Moins de 35,00 USD consommés sur la totalité du semestre (Respecté avec une marge de > 70%).
+| 2026-10-10 15:01 | Destruction | Complete et propre | Credit preserve |

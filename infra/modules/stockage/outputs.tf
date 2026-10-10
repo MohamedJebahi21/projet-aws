@@ -1,11 +1,11 @@
 output "bucket_name" {
   description = "Nom du bucket S3 d'artefacts et reçus"
-  value       = aws_s3_bucket.artifacts.id
+  value       = var.bucket_name
 }
 
 output "bucket_arn" {
   description = "ARN du bucket S3 d'artefacts"
-  value       = aws_s3_bucket.artifacts.arn
+  value       = "arn:aws:s3:::${var.bucket_name}"
 }
 
 output "db_secret_s3_key" {

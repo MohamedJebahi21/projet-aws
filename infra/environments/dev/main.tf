@@ -25,7 +25,10 @@ provider "aws" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 locals {
+  bucket_name = "${var.prefix}-artifacts-${data.aws_caller_identity.current.account_id}"
   default_tags = {
     Project     = "Bibliotheque-AWS-3Tiers"
     Module      = "ING-4-CIM"
@@ -66,6 +69,7 @@ module "base_de_donnees" {
 module "stockage" {
   source      = "../../modules/stockage"
   prefix      = var.prefix
+  bucket_name = local.bucket_name
   db_password = module.base_de_donnees.db_password
   db_host     = module.base_de_donnees.db_address
   tags        = local.default_tags

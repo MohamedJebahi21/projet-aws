@@ -41,6 +41,15 @@ try {
     & $TfExe init
     if ($LASTEXITCODE -ne 0) { throw "Echec terraform init" }
 
+    # Verification et creation idempotente du bucket S3 (conforme SCPs AWS Academy)
+    $AccountId = (aws sts get-caller-identity --query "Account" --output text).Trim()
+    $BucketName = "biblio-dev-artifacts-$AccountId"
+    $BucketCheck = aws s3api head-bucket --bucket $BucketName 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "`nPreparation du bucket S3 conforme AWS Academy ($BucketName)..." -ForegroundColor Yellow
+        aws s3api create-bucket --bucket $BucketName --region us-east-1 | Out-Null
+    }
+
     # 3. Application de l'infrastructure
     Write-Host "`n[3/4] Deploiement de l'infrastructure AWS (VPC, ALB, ASG, RDS, S3, CloudWatch)..." -ForegroundColor Yellow
     & $TfExe apply -auto-approve

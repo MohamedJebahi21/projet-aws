@@ -27,6 +27,14 @@ echo -e "\n[2/4] Initialisation Terraform..."
 cd "$TF_DIR"
 terraform init
 
+# Vérification et création idempotente du bucket S3 (conforme SCPs AWS Academy)
+ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text | tr -d '\r\n')
+BUCKET_NAME="biblio-dev-artifacts-${ACCOUNT_ID}"
+if ! aws s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null; then
+    echo -e "\nPréparation du bucket S3 conforme AWS Academy ($BUCKET_NAME)..."
+    aws s3api create-bucket --bucket "$BUCKET_NAME" --region us-east-1 >/dev/null
+fi
+
 echo -e "\n[3/4] Déploiement de l'infrastructure..."
 terraform apply -auto-approve
 

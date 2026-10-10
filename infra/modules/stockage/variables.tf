@@ -3,6 +3,11 @@ variable "prefix" {
   type        = string
 }
 
+variable "bucket_name" {
+  description = "Nom du bucket S3 (isolé et conforme aux SCPs AWS Academy)"
+  type        = string
+}
+
 variable "db_password" {
   description = "Mot de passe de la base de données à stocker de manière chiffrée"
   type        = string

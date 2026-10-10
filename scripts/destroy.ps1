@@ -27,6 +27,16 @@ try {
         Write-Host "`nDestruction terminee avec succes. Le compteur de facturation horaire est stoppe." -ForegroundColor Green
     }
 
+    # Nettoyage et suppression propre du bucket S3
+    try {
+        $AccountId = (aws sts get-caller-identity --query "Account" --output text).Trim()
+        $BucketName = "biblio-dev-artifacts-$AccountId"
+        Write-Host "`nNettoyage et suppression du bucket S3 ($BucketName)..." -ForegroundColor Yellow
+        aws s3 rb "s3://$BucketName" --force | Out-Null
+    } catch {
+        Write-Warning "Erreur ou bucket deja supprime."
+    }
+
     # Journalisation
     $JournalFile = Join-Path $PSScriptRoot "..\docs\journal-destructions.md"
     $LogLine = "| $($StartTime.ToString('yyyy-MM-dd HH:mm')) | Destruction | Complete et propre | Credit preserve |"
