@@ -86,9 +86,9 @@ def analyze_costs(prefix="biblio-dev"):
     print("==========================================================")
 
     if hourly_total > 0:
-        print("💡 CONSEIL : Lancez 'scripts/destroy.ps1' dès la fin de vos tests pour stopper les coûts.")
+        print("[!] CONSEIL : Lancez 'scripts/destroy.ps1' des la fin de vos tests pour stopper les couts.")
     else:
-        print("✅ Aucune ressource facturée active. Votre budget est sécurisé.")
+        print("[OK] Aucune ressource facturée active. Votre budget est securise.")
 
 if __name__ == "__main__":
     prefix = sys.argv[1] if len(sys.argv) > 1 else "biblio-dev"

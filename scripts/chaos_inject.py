@@ -28,22 +28,22 @@ def inject_terminate_instance():
     )
     instances = [i["InstanceId"] for r in resp.get("Reservations", []) for i in r.get("Instances", [])]
     if not instances:
-        print("❌ Aucune instance applicative en cours d'exécution trouvée.")
+        print("[FAIL] Aucune instance applicative en cours d'execution trouvee.")
         return
 
     target = instances[0]
-    print(f"-> Terminaison forcée de l'instance {target}...")
+    print(f"-> Terminaison forcee de l'instance {target}...")
     ec2.terminate_instances(InstanceIds=[target])
-    print(f"✅ Panne injectée : Instance {target} en cours de destruction.")
-    print("Symptôme attendu : L'ALB bascule le trafic sur la 2ème instance sans coupure, l'ASG recrée une instance de remplacement.")
+    print(f"[OK] Panne injectee : Instance {target} en cours de destruction.")
+    print("Symptome attendu : L'ALB bascule le trafic sur la 2eme instance sans coupure, l'ASG recree une instance de remplacement.")
 
 def inject_alter_health_path():
     _, elbv2, _, _ = get_clients()
-    print("[PANNE 2] Altération du chemin de contrôle de santé de l'ALB...")
+    print("[PANNE 2] Alteration du chemin de controle de sante de l'ALB...")
     tgs = elbv2.describe_target_groups()
     matching = [tg for tg in tgs.get("TargetGroups", []) if "biblio-dev" in tg["TargetGroupName"]]
     if not matching:
-        print("❌ Target Group introuvable.")
+        print("[FAIL] Target Group introuvable.")
         return
 
     tg_arn = matching[0]["TargetGroupArn"]
@@ -51,8 +51,8 @@ def inject_alter_health_path():
         TargetGroupArn=tg_arn,
         HealthCheckPath="/erreur-panne-provoquee-404"
     )
-    print(f"✅ Panne injectée : HealthCheckPath modifié vers /erreur-panne-provoquee-404 sur {matching[0]['TargetGroupName']}.")
-    print("Symptôme attendu : Toutes les cibles deviennent 'Unhealthy', l'alarme CloudWatch 'biblio-dev-alarm-unhealthy-hosts' se déclenche, l'ALB renvoie 502/503.")
+    print(f"[OK] Panne injectee : HealthCheckPath modifie vers /erreur-panne-provoquee-404 sur {matching[0]['TargetGroupName']}.")
+    print("Symptome attendu : Toutes les cibles deviennent 'Unhealthy', l'alarme CloudWatch 'biblio-dev-alarm-unhealthy-hosts' se declenche, l'ALB renvoie 502/503.")
 
 def inject_deregister_target():
     _, elbv2, _, _ = get_clients()
@@ -65,30 +65,29 @@ def inject_deregister_target():
     health = elbv2.describe_target_health(TargetGroupArn=tg_arn)
     targets = health.get("TargetHealthDescriptions", [])
     if not targets:
-        print("❌ Aucune cible active dans le Target Group.")
+        print("[FAIL] Aucune cible active dans le Target Group.")
         return
 
     target_id = targets[0]["Target"]["Id"]
-    print(f"-> Désenregistrement de la cible {target_id}...")
+    print(f"-> Desenregistrement de la cible {target_id}...")
     elbv2.deregister_targets(
         TargetGroupArn=tg_arn,
         Targets=[{"Id": target_id, "Port": 8080}]
     )
-    print(f"✅ Panne injectée : Cible {target_id} retirée.")
-    print("Symptôme attendu : Le trafic n'est plus envoyé à cette instance. Si ASG health check est ELB, l'instance sera recyclée.")
+    print(f"[OK] Panne injectee : Cible {target_id} retiree.")
+    print("Symptome attendu : Le trafic n'est plus envoye a cette instance. Si ASG health check est ELB, l'instance sera recyclee.")
 
 def inject_cut_db_sg():
     ec2, _, _, _ = get_clients()
-    print("[PANNE 4] Coupure d'accès réseau à la base RDS PostgreSQL...")
+    print("[PANNE 4] Coupure d'acces reseau a la base RDS PostgreSQL...")
     sgs = ec2.describe_security_groups(
         Filters=[{"Name": "group-name", "Values": ["biblio-dev-rds-sg"]}]
     )
     if not sgs.get("SecurityGroups"):
-        print("❌ Security Group RDS introuvable.")
+        print("[FAIL] Security Group RDS introuvable.")
         return
 
     sg_id = sgs["SecurityGroups"][0]["GroupId"]
-    # Retirer la règle ingress 5432
     try:
         app_sgs = ec2.describe_security_groups(Filters=[{"Name": "group-name", "Values": ["biblio-dev-app-sg"]}])
         app_sg_id = app_sgs["SecurityGroups"][0]["GroupId"]
@@ -101,15 +100,15 @@ def inject_cut_db_sg():
                 "UserIdGroupPairs": [{"GroupId": app_sg_id}]
             }]
         )
-        print("✅ Panne injectée : Règle d'accès PostgreSQL (5432) révoquée sur biblio-dev-rds-sg.")
-        print("Symptôme attendu : L'application ne peut plus joindre la DB, la route /health renvoie 503 DOWN, statut 'UNREACHABLE'.")
+        print("[OK] Panne injectee : Regle d'acces PostgreSQL (5432) revoquee sur biblio-dev-rds-sg.")
+        print("Symptome attendu : L'application ne peut plus joindre la DB, la route /health renvoie 503 DOWN, statut 'UNREACHABLE'.")
     except Exception as e:
         print(f"Erreur injection : {e}")
 
 def main():
     parser = argparse.ArgumentParser(description="Injecteur de pannes (Semaine 13)")
     parser.add_argument("scenario", choices=["terminate", "health_path", "deregister", "cut_db"],
-                        help="Scénario de panne à injecter")
+                        help="Scenario de panne a injecter")
     args = parser.parse_args()
 
     if args.scenario == "terminate":

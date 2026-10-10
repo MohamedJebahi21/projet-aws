@@ -19,16 +19,16 @@ def audit_infrastructure(prefix="biblio-dev"):
     elbv2 = session.client("elbv2")
 
     print("==========================================================")
-    print("    AUDIT DE CONFORMITÉ & SÉCURITÉ INFRASTRUCTURE AWS     ")
+    print("    AUDIT DE CONFORMITE & SECURITE INFRASTRUCTURE AWS     ")
     print("==========================================================")
-    print(f"Région   : us-east-1")
-    print(f"Préfixe  : {prefix}\n")
+    print("Region   : us-east-1")
+    print(f"Prefixe  : {prefix}\n")
 
     score = 0
     total_checks = 6
 
     # 1. Vérification Security Groups (Pas de 0.0.0.0/0 sur ports sensibles)
-    print("[Vérification 1/6] Analyse des règles de sécurité (Security Groups)...")
+    print("[Verification 1/6] Analyse des regles de securite (Security Groups)...")
     sgs = ec2.describe_security_groups(
         Filters=[{"Name": "group-name", "Values": [f"{prefix}*"]}]
     ).get("SecurityGroups", [])
@@ -42,19 +42,19 @@ def audit_infrastructure(prefix="biblio-dev"):
 
             # Ports interdits sur 0.0.0.0/0
             if is_open and (from_port in [22, 3389, 5432, 3306] or to_port in [22, 3389, 5432, 3306]):
-                print(f"  ❌ Violation détectée dans {sg['GroupName']}: Port {from_port}-{to_port} ouvert sur 0.0.0.0/0 !")
+                print(f"  [FAIL] Violation detectee dans {sg['GroupName']}: Port {from_port}-{to_port} ouvert sur 0.0.0.0/0 !")
                 sg_violation = True
 
     if not sg_violation and sgs:
-        print("  ✅ Conforme : Aucun accès d'administration (22, 3389) ni base (5432) ouvert sur 0.0.0.0/0.")
+        print("  [OK] Conforme : Aucun acces d'administration (22, 3389) ni base (5432) ouvert sur 0.0.0.0/0.")
         score += 1
     elif not sgs:
-        print("  ℹ️ Aucun Security Group actif à auditer actuellement.")
+        print("  [INFO] Aucun Security Group actif a auditer actuellement.")
     else:
-        print("  ❌ Non conforme : Des règles ouvertes ont été détectées.")
+        print("  [FAIL] Non conforme : Des regles ouvertes ont ete detectees.")
 
     # 2. Vérification Chiffrement et Isolation RDS
-    print("\n[Vérification 2/6] Analyse de la base RDS PostgreSQL...")
+    print("\n[Verification 2/6] Analyse de la base RDS PostgreSQL...")
     dbs = [
         db for db in rds.describe_db_instances().get("DBInstances", [])
         if prefix in db["DBInstanceIdentifier"]
@@ -64,15 +64,15 @@ def audit_infrastructure(prefix="biblio-dev"):
         encrypted = db.get("StorageEncrypted", False)
         public = db.get("PubliclyAccessible", True)
         if encrypted and not public:
-            print(f"  ✅ Conforme : Base {db['DBInstanceIdentifier']} chiffrée au repos et strictement privée.")
+            print(f"  [OK] Conforme : Base {db['DBInstanceIdentifier']} chiffree au repos et strictement privee.")
             score += 1
         else:
-            print(f"  ❌ Non conforme : Chiffrement={encrypted}, Public={public}")
+            print(f"  [FAIL] Non conforme : Chiffrement={encrypted}, Public={public}")
     else:
-        print("  ℹ️ Aucune instance RDS déployée actuellement.")
+        print("  [INFO] Aucune instance RDS deployee actuellement.")
 
     # 3. Vérification Chiffrement & Accès Public S3
-    print("\n[Vérification 3/6] Analyse des compartiments S3...")
+    print("\n[Verification 3/6] Analyse des compartiments S3...")
     buckets = [b["Name"] for b in s3.list_buckets().get("Buckets", []) if prefix in b["Name"]]
     if buckets:
         s3_ok = True
@@ -84,15 +84,15 @@ def audit_infrastructure(prefix="biblio-dev"):
             except Exception:
                 s3_ok = False
         if s3_ok:
-            print(f"  ✅ Conforme : Accès public 100% bloqué sur tous les compartiments {prefix}.")
+            print(f"  [OK] Conforme : Acces public 100% bloque sur tous les compartiments {prefix}.")
             score += 1
         else:
-            print("  ❌ Non conforme : Blocage public incomplet sur un bucket S3.")
+            print("  [FAIL] Non conforme : Blocage public incomplet sur un bucket S3.")
     else:
-        print("  ℹ️ Aucun compartiment S3 déployé actuellement.")
+        print("  [INFO] Aucun compartiment S3 deploye actuellement.")
 
     # 4. Vérification Contrôle de Santé ALB (/health)
-    print("\n[Vérification 4/6] Analyse du contrôle de santé de l'ALB...")
+    print("\n[Verification 4/6] Analyse du controle de sante de l'ALB...")
     tgs = [
         tg for tg in elbv2.describe_target_groups().get("TargetGroups", [])
         if prefix in tg["TargetGroupName"]
@@ -100,41 +100,41 @@ def audit_infrastructure(prefix="biblio-dev"):
     if tgs:
         tg = tgs[0]
         if tg.get("HealthCheckPath") == "/health" and tg.get("Matcher", {}).get("HttpCode") == "200":
-            print(f"  ✅ Conforme : Health check correctement configuré sur '/health' (code attendu 200).")
+            print("  [OK] Conforme : Health check correctement configure sur '/health' (code attendu 200).")
             score += 1
         else:
-            print(f"  ❌ Chemin de santé non conforme : {tg.get('HealthCheckPath')}")
+            print(f"  [FAIL] Chemin de sante non conforme : {tg.get('HealthCheckPath')}")
     else:
-        print("  ℹ️ Aucun Target Group déployé actuellement.")
+        print("  [INFO] Aucun Target Group deploye actuellement.")
 
     # 5. Vérification Chiffrement EBS
-    print("\n[Vérification 5/6] Analyse du chiffrement des volumes EBS...")
+    print("\n[Verification 5/6] Analyse du chiffrement des volumes EBS...")
     vols = ec2.describe_volumes(
         Filters=[{"Name": "tag:Prefix", "Values": [prefix]}]
     ).get("Volumes", [])
     if vols:
         all_enc = all(v.get("Encrypted", False) for v in vols)
         if all_enc:
-            print(f"  ✅ Conforme : 100% des {len(vols)} volumes EBS associés sont chiffrés au repos.")
+            print(f"  [OK] Conforme : 100% des {len(vols)} volumes EBS associes sont chiffres au repos.")
             score += 1
         else:
-            print("  ❌ Non conforme : Volume non chiffré détecté.")
+            print("  [FAIL] Non conforme : Volume non chiffre detecte.")
     else:
-        print("  ℹ️ Aucun volume EBS actif actuellement.")
+        print("  [INFO] Aucun volume EBS actif actuellement.")
 
     # 6. Vérification Marquage / Tagging normalisé
-    print("\n[Vérification 6/6] Analyse du marquage et des étiquettes (Tags)...")
+    print("\n[Verification 6/6] Analyse du marquage et des etiquettes (Tags)...")
     instances = ec2.describe_instances(
         Filters=[{"Name": "tag:Prefix", "Values": [prefix]}]
     ).get("Reservations", [])
     if instances:
-        print("  ✅ Conforme : Jeu d'étiquettes Project/Module/Environment/Prefix présent sur les instances.")
+        print("  [OK] Conforme : Jeu d'etiquettes Project/Module/Environment/Prefix present sur les instances.")
         score += 1
     else:
-        print("  ℹ️ En attente de ressources actives pour la validation des tags.")
+        print("  [INFO] En attente de ressources actives pour la validation des tags.")
 
     print("\n==========================================================")
-    print(f"SCORE DE CONFORMITÉ : {score}/{total_checks}")
+    print(f"SCORE DE CONFORMITE : {score}/{total_checks}")
     print("==========================================================")
 
 if __name__ == "__main__":

@@ -86,9 +86,9 @@ def run_load_test(base_url, concurrent_users, duration_seconds):
     print("==========================================================")
 
     if errors == 0 and avg_lat < 500:
-        print("✅ RÉSULTAT CONFORME : L'infrastructure absorbe la charge sans aucune dégradation.")
+        print("[OK] RESULTAT CONFORME : L'infrastructure absorbe la charge sans aucune degradation.")
     else:
-        print("⚠️ Remarque : Des latences ou erreurs ont été détectées, vérifier CloudWatch.")
+        print("[INFO] Remarque : Des latences ou erreurs ont ete detectees, verifier CloudWatch.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Test de charge ALB 3-tiers")
