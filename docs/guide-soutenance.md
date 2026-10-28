@@ -1,37 +1,63 @@
-# GUIDE DE SOUTENANCE ORALE ET DÉMONSTRATION EN DIRECT
-**Projet de Déploiement d'infrastructure AWS (ING-4-CIM)**
+# GUIDE DE SOUTENANCE ORALE (15 MINUTES CHRONO)
+**Module ING-4-CIM — Enseignant responsable : Hamdi Chebbi**
+*Évaluation officielle : Livrables L1, L2 et L3*
 
 ---
 
-## 1. Déroulé Chronométré de la Soutenance (15 à 20 minutes)
+## ⏱️ Répartition du Temps (15 Minutes — 5 Étudiants)
 
-| Temps | Phase | Contenu & Actions en direct |
-| :--- | :--- | :--- |
-| **00:00 - 03:00** | **1. Présentation de l'Architecture** | - Présentation du schéma 3-tiers (VPC, ALB, ASG multi-AZ, RDS PostgreSQL, S3, CloudWatch).<br>- Rappel des contraintes du Learner Lab (50$, rôles LabRole, us-east-1). |
-| **03:00 - 06:00** | **2. Démonstration Applicative** | - Connexion à l'URL publique de l'ALB.<br>- Démonstration de l'alternance des requêtes entre `us-east-1a` et `us-east-1b` visible sur le badge de zone.<br>- Création d'un prêt avec génération de reçu PDF archivé dans S3. |
-| **06:00 - 09:00** | **3. Épreuve de Résilience (Live Failure)** | - Lancement du script de flux continu : `python scripts/load_test.py --users 20`.<br>- Terminaison brutale d'une instance EC2 via `python scripts/chaos_inject.py terminate`.<br>- Constat : **Zéro interruption de service**, l'ALB bascule instantanément, l'ASG recrée une VM. |
-| **09:00 - 12:00** | **4. Supervision & Alarmes** | - Affichage du tableau de bord unifié CloudWatch en direct.<br>- Démonstration de l'alarme `cinetrekker-dev-alarm-unhealthy-hosts` ou `high-cpu`. |
-| **12:00 - 15:00** | **5. Reproductibilité & Destruction** | - Lancement de `scripts/destroy.ps1` : démonstration de la suppression complète.<br>- Preuve du temps de reconstruction chronométré (< 15 min). |
-| **15:00 - 20:00** | **6. Questions / Réponses avec le Jury** | - Défense des décisions d'architecture et justification des choix techniques. |
+Le professeur a précisé dans son mail :  
+> *« 15 minutes par groupe, avec la participation de tous les membres. »*
+
+Voici la répartition idéale de 3 minutes par étudiant :
 
 ---
 
-## 2. Questions Fréquentes du Jury et Réponses Clés
+### 1. Mohamed JEBAHI (0:00 – 3:00) : Livrable L1
+* **Document à projeter** : [`docs/L1_cahier_des_charges.md`](file:///C:/Users/DELL/OneDrive/Desktop/ING-4/Project/projet/docs/L1_cahier_des_charges.md)
+* **Ce qu'il faut dire** :
+  * Présentation du sujet : plateforme web CineTrekker.
+  * Application retenue : SPA moderne développée en React 19 / TypeScript / Vite, servie par Node.js sur le port 8080.
+  * Composants applicatifs : Front-end réactif, serveur HTTP avec route de santé `/health` et proxy d'API TMDB.
+  * Présentation du dépôt Git et des 5 rôles de l'équipe.
 
-#### Q1 : Pourquoi avoir choisi une instance NAT EC2 plutôt qu'un NAT Gateway managé AWS ?
-> **Réponse** : "Le NAT Gateway managé est facturé ~0,045 $/h (~32 $/mois), ce qui aurait épuisé 65% de notre crédit de 50$ en un seul mois. Nous avons déployé une micro-instance EC2 `t3.micro` avec `iptables`, combinée à un VPC Gateway Endpoint S3 gratuit. Cela divise le coût par 4 tout en assurant l'accès sortant requis pour les instances privées."
+---
 
-#### Q2 : Comment garantissez-vous qu'aucun secret ne figure dans Git ni dans le User Data ?
-> **Réponse** : "Le mot de passe de la base de données est généré aléatoirement par Terraform (`random_password`), puis directement écrit dans un objet S3 chiffré (`secrets/db_password.txt`). Au démarrage, l'instance EC2 utilise son profil de rôle `LabInstanceProfile` pour télécharger le secret et l'injecter dans un fichier d'environnement local protégé avec les permissions `chmod 600`. Aucun mot de passe n'est écrit dans le code source ni dans les données utilisateur."
+### 2. Mohamed LAAMERI (3:00 – 6:00) : Livrable L2 (Architecture & Réseau)
+* **Document à projeter** : [`docs/L2_architecture.md`](file:///C:/Users/DELL/OneDrive/Desktop/ING-4/Project/projet/docs/L2_architecture.md) (Schéma Mermaid)
+* **Ce qu'il faut dire** :
+  * Découpage réseau : VPC dédié `10.0.0.0/16` sur 2 Zones de Disponibilité (`us-east-1a` et `us-east-1b`).
+  * 6 sous-réseaux : 2 publics (ALB et NAT), 2 privés applicatifs (instances EC2), et 2 sous-réseaux isolés (préparés pour la persistance L5).
+  * Point d'entrée unique par l'Application Load Balancer (ALB) sur le port 80 distribuant le trafic vers le port 8080 des instances.
+  * Justification sur les axes **Disponibilité** (multi-AZ) et **Scalabilité** (Auto Scaling Group élastique).
 
-#### Q3 : Que se passe-t-il exactement si une zone de disponibilité d'Amazon tombe en panne ?
-> **Réponse** : "Notre architecture est déployée sur deux zones (`us-east-1a` et `us-east-1b`). L'ALB détecte l'échec des contrôles de santé sur les cibles de la zone sinistrée en moins de 30 secondes et réachemine 100% des requêtes vers la seconde zone. L'Auto Scaling Group rétablit ensuite automatiquement le nombre d'instances désiré sur la zone opérationnelle."
+---
 
-#### Q4 : Pourquoi le Multi-AZ de la base RDS est-il désactivé ?
-> **Réponse** : "Le Multi-AZ sur RDS double immédiatement le coût horaire de l'instance de base. Pour respecter notre budget cible de 35$ sur tout le semestre, nous avons privilégié une configuration Single-AZ en sous-réseau privé avec des sauvegardes quotidiennes automatisées et des snapshots manuels, offrant un RPO de 24 heures et un RTO de moins de 11 minutes."
+### 3. Salma KAHLA (6:00 – 9:00) : Livrable L2 (Sécurité & Stockage)
+* **Document à projeter** : [`docs/L2_architecture.md`](file:///C:/Users/DELL/OneDrive/Desktop/ING-4/Project/projet/docs/L2_architecture.md) (Matrice de Sécurité)
+* **Ce qu'il faut dire** :
+  * Principe du moindre privilège : chaînage strict des Security Groups (`alb-sg` $\rightarrow$ `app-sg` $\rightarrow$ `nat-sg`) sans aucune adresse IP en dur.
+  * Zéro port d'administration ouvert : aucun port SSH 22 ou RDP 3389 exposé sur Internet. Administration exclusive via AWS Systems Manager (SSM) Session Manager.
+  * Stockage S3 : bucket privé chiffré SSE-S3 AES-256 avec accès public 100% bloqué pour héberger l'archive applicative `cinetrekker.tar.gz`.
 
-#### Q5 : Comment garantissez-vous que l'état Terraform ne sera pas perdu entre plusieurs étudiants ?
-> **Réponse** : "L'état Terraform peut être stocké dans un bucket S3 privé chiffré dédié. De plus, notre code d'infrastructure est 100% déterministe et reproductible : en cas de changement de compte porteur, une seule commande `deploy.ps1` recrée l'intégralité de l'environnement depuis zéro sans aucune étape manuelle."
+---
 
-#### Q6 : Comment prouvez-vous que vous n'avez pas cliqué dans la console AWS ?
-> **Réponse** : "Toutes les ressources portent le tag `ManagedBy = Terraform` et le préfixe normalisé `cinetrekker-dev`. La destruction complète puis la reconstruction de bout en bout en une seule commande en moins de 15 minutes démontre que 100% de notre infrastructure est définie en code versionné."
+### 4. Arij CHAIBI (9:00 – 12:00) : Livrable L3 (Accès Sortant NAT & Démo Live)
+* **Document à projeter** : [`docs/L3_infrastructure.md`](file:///C:/Users/DELL/OneDrive/Desktop/ING-4/Project/projet/docs/L3_infrastructure.md) + Terminal
+* **Ce qu'il faut dire et montrer** :
+  * **Justification de l'accès sortant (ADR-01)** : Pourquoi une instance NAT `t3.micro` avec `iptables-nft` (~0,0104 $/h) au lieu d'un NAT Gateway managé AWS à 0,045 $/h (~32,85 $/mois qui consommerait 65% du budget étudiant).
+  * Rôle clé du **VPC Gateway Endpoint S3 (100% gratuit)** : le téléchargement du package lourd ne passe pas par l'instance NAT.
+  * **Démonstration Live** :
+    1. Ouvrir le navigateur sur `http://<ALB_DNS>`.
+    2. Ouvrir `http://<ALB_DNS>/health` (HTTP 200 OK).
+    3. Montrer l'alternance des instances entre les 2 zones en faisant F5.
+
+---
+
+### 5. Mouheddin KHARRAT (12:00 – 15:00) : Livrable L2/L3 (Budget & Destruction)
+* **Document à projeter** : [`docs/journal-destructions.md`](file:///C:/Users/DELL/OneDrive/Desktop/ING-4/Project/projet/docs/journal-destructions.md) + Exécution `destroy.ps1`
+* **Ce qu'il faut dire et montrer** :
+  * Estimation financière : coût horaire réel de **~0,06 USD/h** (~0,18 $ par TP de 3h).
+  * **Rappel du professeur dans son mail** : *"une semaine d'oubli consomme environ 35 % du crédit de 50 USD"*. Mouheddin montre le calcul exact : $13,81 \text{ USD} \approx 28\% \text{ à } 35\%$ du budget si l'on oublie de détruire.
+  * **Lancement de la destruction en direct** devant le professeur : double-clic sur `LANCER_DESTROY_AWS.bat` (ou `destroy.ps1`).
+  * Montrer que l'infrastructure se démonte proprement en moins de 60 secondes sans blocage, stoppant net toute facturation horaire.
