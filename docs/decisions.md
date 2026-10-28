@@ -1,5 +1,5 @@
 # REGISTRE DES DÉCISIONS D'ARCHITECTURE (ADR)
-**Architecture 3-Tiers AWS — Bibliothèque Universitaire**
+**Architecture 3-Tiers AWS — Plateforme CineTrekker**
 
 ---
 
@@ -53,5 +53,5 @@
 ### ADR-06 : Durée de Rétention des Logs CloudWatch à 1 Jour
 * **Statut** : Validé.
 * **Contexte** : CloudWatch facture l'ingestion et le stockage des logs au-delà du quota gratuit de 5 Go.
-* **Décision** : Rétention explicite configurée à **1 jour** sur le groupe de logs `/aws/ec2/biblio-dev-app`.
+* **Décision** : Rétention explicite configurée à **1 jour** sur le groupe de logs `/aws/ec2/cinetrekker-dev-app`.
 * **Justification** : Suffisant pour diagnostiquer les incidents et soutenances de séance, tout en éliminant tout risque de surcoût cumulé sur le semestre.

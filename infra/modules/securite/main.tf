@@ -57,16 +57,6 @@ resource "aws_security_group_rule" "app_ingress_from_alb" {
   security_group_id        = aws_security_group.app.id
 }
 
-resource "aws_security_group_rule" "app_egress_to_rds" {
-  type                     = "egress"
-  from_port                = 5432
-  to_port                  = 5432
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.rds.id
-  description              = "Acces PostgreSQL vers RDS"
-  security_group_id        = aws_security_group.app.id
-}
-
 resource "aws_security_group_rule" "app_egress_https" {
   type              = "egress"
   from_port         = 443
@@ -105,26 +95,4 @@ resource "aws_security_group_rule" "app_egress_http_pkg" {
   cidr_blocks       = ["0.0.0.0/0"]
   description       = "Depots de paquets Linux via NAT"
   security_group_id = aws_security_group.app.id
-}
-
-# 3. Groupe de Sécurité Base de Données (Amazon RDS PostgreSQL)
-resource "aws_security_group" "rds" {
-  name        = "${var.prefix}-rds-sg"
-  description = "Controle acces strictement prive pour base de donnees RDS"
-  vpc_id      = var.vpc_id
-
-  tags = merge(var.tags, {
-    Name = "${var.prefix}-rds-sg"
-    Tier = "Private-Database"
-  })
-}
-
-resource "aws_security_group_rule" "rds_ingress_from_app" {
-  type                     = "ingress"
-  from_port                = 5432
-  to_port                  = 5432
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.app.id
-  description              = "Connexion PostgreSQL autorisee depuis instances applicatives"
-  security_group_id        = aws_security_group.rds.id
 }
