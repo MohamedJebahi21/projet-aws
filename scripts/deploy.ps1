@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-    Script de déploiement et de reconstruction complète en une commande.
+    Script de déploiement et de reconstruction complète en une commande (L1-L3).
 .DESCRIPTION
-    Mesure le temps de reconstruction total (objectif chiffré : < 20 minutes),
-    compile le package JAR si nécessaire, initialise Terraform et applique
-    l'infrastructure 3-tiers AWS.
+    Mesure le temps de reconstruction total (< 5 minutes),
+    compile le package applicatif si nécessaire, initialise Terraform et applique
+    l'infrastructure réseau, calcul et sécurité AWS.
 #>
 
 $ErrorActionPreference = "Stop"
@@ -15,20 +15,36 @@ Write-Host "   RECONSTRUCTION COMPLETE EN UNE SEULE COMMANDE (AWS)   " -Foregrou
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "Demarrage a : $($StartTime.ToString('yyyy-MM-dd HH:mm:ss'))"
 
-# 1. Verification et compilation du package applicatif JAR
-$AppJar = Join-Path $PSScriptRoot "..\app\target\bibliotheque-app.jar"
-if (-not (Test-Path $AppJar)) {
-    Write-Host "`n[1/4] Compilation du package applicatif avec Maven..." -ForegroundColor Yellow
-    $MavenCmd = "C:\ProgramData\chocolatey\lib\maven\apache-maven-3.9.15\bin\mvn.cmd"
-    $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot"
-    $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+# 1. Verification et compilation du package applicatif CineTrekker (Vite SPA + Node.js)
+$AppDir = Join-Path $PSScriptRoot "..\app"
+$AppTar = Join-Path $AppDir "cinetrekker.tar.gz"
+$DistDir = Join-Path $AppDir "dist"
 
-    & $MavenCmd -f (Join-Path $PSScriptRoot "..\app\pom.xml") clean package -DskipTests
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Echec de la compilation Maven."
+if (-not (Test-Path $AppTar)) {
+    Write-Host "`n[1/4] Construction du package applicatif CineTrekker..." -ForegroundColor Yellow
+    Push-Location $AppDir
+    try {
+        if (-not (Test-Path "node_modules")) {
+            Write-Host "Installation des dépendances npm..." -ForegroundColor Cyan
+            npm install
+            if ($LASTEXITCODE -ne 0) { throw "Echec npm install" }
+        }
+
+        if (-not (Test-Path $DistDir)) {
+            Write-Host "Compilation de la production Vite (dist)..." -ForegroundColor Cyan
+            npx vite build
+            if ($LASTEXITCODE -ne 0) { throw "Echec vite build" }
+        }
+
+        Write-Host "Création de l'archive cinetrekker.tar.gz..." -ForegroundColor Cyan
+        tar -czf cinetrekker.tar.gz dist server.js package.json
+        if ($LASTEXITCODE -ne 0) { throw "Echec tar compression" }
+        Write-Host "Archive CineTrekker créée avec succès." -ForegroundColor Green
+    } finally {
+        Pop-Location
     }
 } else {
-    Write-Host "`n[1/4] Artefact JAR present ($AppJar)." -ForegroundColor Green
+    Write-Host "`n[1/4] Artefact CineTrekker présent ($AppTar)." -ForegroundColor Green
 }
 
 # 2. Initialisation Terraform
@@ -43,15 +59,19 @@ try {
 
     # Verification et creation idempotente du bucket S3 (conforme SCPs AWS Academy)
     $AccountId = (aws sts get-caller-identity --query "Account" --output text).Trim()
-    $BucketName = "biblio-dev-artifacts-$AccountId"
-    $BucketCheck = aws s3api head-bucket --bucket $BucketName 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "`nPreparation du bucket S3 conforme AWS Academy ($BucketName)..." -ForegroundColor Yellow
+    $BucketName = "cinetrekker-dev-artifacts-$AccountId"
+    Write-Host "Verification du bucket S3 ($BucketName)..." -ForegroundColor Yellow
+    $bucketCheck = aws s3api list-buckets --query "Buckets[?Name=='$BucketName'].Name" --output text
+    if (-not $bucketCheck) {
+        Write-Host "Creation du bucket S3 ($BucketName)..." -ForegroundColor Yellow
         aws s3api create-bucket --bucket $BucketName --region us-east-1 | Out-Null
+        Write-Host "Bucket S3 cree avec succes." -ForegroundColor Green
+    } else {
+        Write-Host "Bucket S3 deja existant." -ForegroundColor Green
     }
 
     # 3. Application de l'infrastructure
-    Write-Host "`n[3/4] Deploiement de l'infrastructure AWS (VPC, ALB, ASG, RDS, S3, CloudWatch)..." -ForegroundColor Yellow
+    Write-Host "`n[3/4] Deploiement de l'infrastructure AWS (VPC Multi-AZ, NAT, ALB, ASG, S3)..." -ForegroundColor Yellow
     & $TfExe apply -auto-approve
     if ($LASTEXITCODE -ne 0) { throw "Echec terraform apply" }
 
@@ -71,11 +91,11 @@ try {
     Write-Host "Temps de reconstruction mesure : $Minutes min $Seconds s" -ForegroundColor Green
     Write-Host "URL Application Web            : $AlbUrl" -ForegroundColor Cyan
     Write-Host "Controle de Sante ALB          : $HealthUrl" -ForegroundColor Cyan
-    Write-Host "`nAttente de la montee des cibles ALB (~60s)..."
+    Write-Host "`nAttente de la montee des cibles ALB (~45s)..."
 
     # Journalisation automatique de la reconstruction
     $JournalFile = Join-Path $PSScriptRoot "..\docs\journal-destructions.md"
-    $LogLine = "| $($StartTime.ToString('yyyy-MM-dd HH:mm')) | Reconstruction | Reussie ($Minutes m $Seconds s) | $AlbUrl |"
+    $LogLine = "| $($StartTime.ToString('yyyy-MM-dd HH:mm')) | Reconstruction L1-L3 | Reussie ($Minutes m $Seconds s) | $AlbUrl |"
     Add-Content -Path $JournalFile -Value $LogLine -ErrorAction SilentlyContinue
 
 } finally {

@@ -1,26 +1,30 @@
 @echo off
-title Deploiement 1-Clic Infrastructure AWS (ING-4-CIM)
+title Deploiement 1-Clic Infrastructure CineTrekker AWS 3-Tiers
 color 0B
 
 echo ======================================================================
-echo    LANCEMENT AUTOMATIQUE DU DEPLOIEMENT AWS 3-TIERS (1-CLIC)
+echo    LANCEMENT DU DEPLOIEMENT AWS 3-TIERS — CINETREKKER (1-CLIC)
 echo ======================================================================
 echo.
 echo Verification des identifiants AWS temporaires...
 
-python -c "import boto3; s = boto3.client('sts'); print('[OK] Connecte au compte:', s.get_caller_identity()['Account'])" 2>nul
+aws sts get-caller-identity >nul 2>&1
 if errorlevel 1 (
     echo.
-    echo [ERREUR] Vos identifiants AWS sont invalides ou expires !
-    echo.
-    echo Solution :
-    echo 1. Connectez-vous sur AWS Academy Learner Lab et cliquez sur 'Start Lab'.
-    echo 2. Cliquez sur 'AWS Details' puis 'Show AWS CLI credentials'.
-    echo 3. Copiez vos identifiants dans C:\Users\user\.aws\credentials
+    echo ======================================================================
+    echo [ERREUR] IDENTIFIANTS AWS ACADEMY INVALIDES OU LAB ARRETE
+    echo ======================================================================
+    echo 1. Ouvrez AWS Academy Learner Lab et cliquez sur 'Start Lab'.
+    echo 2. Attendez que le voyant 'AWS' devienne VERT.
+    echo 3. Cliquez sur 'AWS Details' puis 'Show' a cote de AWS CLI credentials.
+    echo 4. Mettez a jour le fichier %%USERPROFILE%%\.aws\credentials
+    echo ======================================================================
     echo.
     pause
     exit /b 1
 )
+
+echo [OK] Connecte au compte AWS Academy.
 
 echo.
 echo Demarrage du script de reconstruction complete...

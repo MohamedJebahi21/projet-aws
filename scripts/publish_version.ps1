@@ -18,16 +18,14 @@ $TfDir = Join-Path $PSScriptRoot "..\infra\environments\dev"
 $TfExe = Join-Path $PSScriptRoot "..\terraform.exe"
 $AppDir = Join-Path $PSScriptRoot "..\app"
 
-# 1. Compilation de la nouvelle version
-Write-Host "`n[1/3] Compilation du code applicatif..." -ForegroundColor Yellow
-$MavenCmd = "C:\ProgramData\chocolatey\lib\maven\apache-maven-3.9.15\bin\mvn.cmd"
-$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot"
-$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
-
+# 1. Compilation de la nouvelle version CineTrekker
+Write-Host "`n[1/3] Compilation du code applicatif CineTrekker..." -ForegroundColor Yellow
 Push-Location $AppDir
 try {
-    & $MavenCmd clean package -DskipTests
-    if ($LASTEXITCODE -ne 0) { throw "Echec de la compilation Maven." }
+    npx vite build
+    if ($LASTEXITCODE -ne 0) { throw "Echec de la compilation Vite." }
+    tar -czf cinetrekker.tar.gz dist server.js package.json
+    if ($LASTEXITCODE -ne 0) { throw "Echec de la création de l'archive tar.gz." }
 } finally {
     Pop-Location
 }
@@ -36,21 +34,21 @@ try {
 Push-Location $TfDir
 try {
     $Bucket = (& $TfExe output -raw s3_artifacts_bucket)
-    $AsgName = (& $TfExe output -json | ConvertFrom-Json | Select-Object -ExpandProperty alb_dns_name -ErrorAction SilentlyContinue)
-    # Recuperer le nom de l'ASG via Terraform ou awscli
-    $Asg = (python -m awscli autoscaling describe-auto-scaling-groups --query "AutoScalingGroups[?contains(AutoScalingGroupName, 'biblio-dev')].AutoScalingGroupName" --output text)
+    $Asg = (aws autoscaling describe-auto-scaling-groups --query "AutoScalingGroups[?contains(AutoScalingGroupName, 'cinetrekker-dev')].AutoScalingGroupName" --output text)
 
-    Write-Host "`n[2/3] Televersement de l'artefact sur S3 (s3://$Bucket/app/bibliotheque-app.jar)..." -ForegroundColor Yellow
-    $JarPath = Join-Path $AppDir "target\bibliotheque-app.jar"
-    python -m awscli s3 cp $JarPath "s3://$Bucket/app/bibliotheque-app.jar"
+    Write-Host "`n[2/3] Televersement de l'archive sur S3 (s3://$Bucket/app/cinetrekker.tar.gz)..." -ForegroundColor Yellow
+    $TarPath = Join-Path $AppDir "cinetrekker.tar.gz"
+    aws s3 cp $TarPath "s3://$Bucket/app/cinetrekker.tar.gz"
 
-    # 3. Declenchement du Rolling Refresh sur l'ASG
-    Write-Host "`n[3/3] Declenchement du Rolling Update sur l'Auto Scaling Group ($Asg)..." -ForegroundColor Yellow
-    python -m awscli autoscaling start-instance-refresh `
-        --auto-scaling-group-name $Asg `
-        --preferences '{"MinHealthyPercentage": 50, "InstanceWarmup": 120}'
+    # 3. Renouvellement des instances sur l'ASG (compatible SCPs AWS Academy)
+    Write-Host "`n[3/3] Declenchement du renouvellement des instances sur l'Auto Scaling Group ($Asg)..." -ForegroundColor Yellow
+    $instances = (aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names $Asg --query "AutoScalingGroups[0].Instances[*].InstanceId" --output text).Split("`t ") | Where-Object { $_ }
+    foreach ($inst in $instances) {
+        Write-Host "Remplacement immediat de l'instance $inst (l'ASG en relance une avec le dernier code S3)..." -ForegroundColor Cyan
+        aws autoscaling terminate-instance-in-auto-scaling-group --instance-id $inst --no-should-decrement-desired-capacity 2>$null | Out-Null
+    }
 
-    Write-Host "`nDeploiement lance avec succes ! Les instances sont renouvelees une par une sans interruption." -ForegroundColor Green
+    Write-Host "`nDeploiement lance avec succes ! L'ASG recrée automatiquement les instances avec la nouvelle version." -ForegroundColor Green
 } finally {
     Pop-Location
 }

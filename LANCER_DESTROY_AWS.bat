@@ -1,9 +1,9 @@
 @echo off
-title Destruction Propre et Arret Facturation AWS (1-Clic)
+title Destruction Propre CineTrekker et Arret Facturation AWS (1-Clic)
 color 0C
 
 echo ======================================================================
-echo    DESTRUCTION COMPLETE DES RESSOURCES FACTUREES A L'HEURE (1-CLIC)
+echo    DESTRUCTION COMPLETE CINETREKKER — ARRET FACTURATION (1-CLIC)
 echo ======================================================================
 echo.
 echo Cette operation va detruire :
@@ -14,6 +14,14 @@ echo - L'instance NAT
 echo.
 echo Cela arrete immediatement la facturation et preserve vos 50$ !
 echo.
+
+echo Verification des identifiants AWS...
+aws sts get-caller-identity >nul 2>&1
+if errorlevel 1 (
+    echo [ERREUR] IDENTIFIANTS AWS ACADEMY INVALIDES OU LAB ARRETE.
+    pause
+    exit /b 1
+)
 
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\destroy.ps1"
 

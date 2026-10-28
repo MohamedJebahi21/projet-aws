@@ -14,12 +14,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$SCRIPT_DIR/../app"
 TF_DIR="$SCRIPT_DIR/../infra/environments/dev"
 
-# 1. Compilation si JAR absent
-if [ ! -f "$APP_DIR/target/bibliotheque-app.jar" ]; then
-    echo -e "\n[1/4] Compilation du package JAR avec Maven..."
-    (cd "$APP_DIR" && mvn clean package -DskipTests)
+# 1. Compilation si archive absente
+if [ ! -f "$APP_DIR/cinetrekker.tar.gz" ]; then
+    echo -e "\n[1/4] Compilation du package CineTrekker..."
+    (cd "$APP_DIR" && npx vite build && tar -czf cinetrekker.tar.gz dist server.js package.json)
 else
-    echo -e "\n[1/4] Artefact JAR présent."
+    echo -e "\n[1/4] Archive CineTrekker présente."
 fi
 
 # 2. Terraform Init & Apply
@@ -29,7 +29,7 @@ terraform init
 
 # Vérification et création idempotente du bucket S3 (conforme SCPs AWS Academy)
 ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text | tr -d '\r\n')
-BUCKET_NAME="biblio-dev-artifacts-${ACCOUNT_ID}"
+BUCKET_NAME="cinetrekker-dev-artifacts-${ACCOUNT_ID}"
 if ! aws s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null; then
     echo -e "\nPréparation du bucket S3 conforme AWS Academy ($BUCKET_NAME)..."
     aws s3api create-bucket --bucket "$BUCKET_NAME" --region us-east-1 >/dev/null
