@@ -7,23 +7,11 @@ variable "aws_region" {
 variable "prefix" {
   description = "Préfixe normalisé pour toutes les ressources du groupe"
   type        = string
-  default     = "biblio-dev"
+  default     = "cinetrekker-dev"
 }
 
 variable "environment" {
   description = "Nom de l'environnement"
   type        = string
   default     = "dev"
-}
-
-variable "db_name" {
-  description = "Nom de la base relationnelle PostgreSQL"
-  type        = string
-  default     = "library"
-}
-
-variable "db_username" {
-  description = "Utilisateur administrateur PostgreSQL"
-  type        = string
-  default     = "dbadmin"
 }

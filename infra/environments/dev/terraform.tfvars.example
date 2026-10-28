@@ -2,7 +2,7 @@
 # Copier sous terraform.tfvars pour surcharger localement (fichier exclu par .gitignore)
 
 aws_region  = "us-east-1"
-prefix      = "biblio-dev"
+prefix      = "cinetrekker-dev"
 environment = "dev"
-db_name     = "library"
+db_name     = "cinetrekker"
 db_username = "dbadmin"

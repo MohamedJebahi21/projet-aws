@@ -18,17 +18,7 @@ output "s3_artifacts_bucket" {
   value       = module.stockage.bucket_name
 }
 
-output "cloudwatch_dashboard" {
-  description = "Nom du tableau de bord CloudWatch"
-  value       = module.supervision.dashboard_name
-}
-
 output "nat_public_ip" {
   description = "IP publique de l'instance NAT"
   value       = module.reseau.nat_public_ip
-}
-
-output "db_endpoint" {
-  description = "Endpoint privé de l'instance PostgreSQL RDS"
-  value       = module.base_de_donnees.db_endpoint
 }

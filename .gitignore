@@ -15,7 +15,6 @@
 !.env.example
 
 # Terraform - État local et caches
-# (L'état DOIT être stocké dans le bucket S3 distant, jamais localement)
 *.tfstate
 *.tfstate.*
 *.tfstate.backup
@@ -31,6 +30,14 @@ aws.cmd
 *.zip
 *.tar.gz
 
+# Node.js et dépendances Web
+node_modules/
+app/node_modules/
+app/dist/
+dist/
+.npm
+npm-debug.log*
+
 # Fichiers de build et IDE
 target/
 *.class
@@ -40,11 +47,6 @@ dependency-reduced-pom.xml
 *.iml
 .DS_Store
 Thumbs.db
-
-# Bases locales SQLite
-*.db
-*.sqlite
-*.sqlite3
 
 # Logs et sorties d'exécution locales
 *.log

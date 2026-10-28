@@ -22,3 +22,18 @@ Conformément à la règle d'exploitation du projet (§3.1), toute ressource fac
 * **Consommation totale** : **~0,15 USD** (< 1% du budget alloué)
 * **Objectif cible contractuel** : Moins de 35,00 USD consommés sur la totalité du semestre (Respecté avec une marge de > 70%).
 | 2026-10-10 15:01 | Destruction | Complete et propre | Credit preserve |
+| 2026-10-10 15:12 | Destruction | Complete et propre | Credit preserve |
+| 2026-10-10 16:12 | Destruction | Complete et propre | Credit preserve |
+| 2026-10-10 16:25 | Destruction | Complete et propre | Credit preserve |
+| 2026-10-10 16:34 | Destruction | Complete et propre | Credit preserve |
+| 2026-10-10 16:38 | Destruction | Complete et propre | Credit preserve |
+| 2026-10-19 22:20 | Reconstruction | Reussie (9 m 41 s) | Ancienne version migree |
+| 2026-10-19 22:38 | Destruction | Reussie (4 m 21 s) | Credit preserve |
+| 2026-10-19 22:51 | Reconstruction | Reussie (9 m 3 s) | http://cinetrekker-dev-alb-2125156447.us-east-1.elb.amazonaws.com |
+| 2026-10-19 23:15 | Destruction | Reussie (4 m 16 s) | Credit preserve |
+| 2026-10-19 23:21 | Reconstruction | Reussie (9 m 18 s) | http://cinetrekker-dev-alb-399643046.us-east-1.elb.amazonaws.com |
+| 2026-10-19 23:31 | Destruction | Reussie (4 m 21 s) | Credit preserve |
+| 2026-10-23 12:23 | Reconstruction | Reussie (8 m 53 s) | http://cinetrekker-dev-alb-1228777347.us-east-1.elb.amazonaws.com |
+| 2026-10-23 13:15 | Destruction | Reussie (3 m 31 s) | Credit preserve |
+| 2026-10-23 13:21 | Reconstruction | Reussie (9 m 11 s) | http://cinetrekker-dev-alb-1275056322.us-east-1.elb.amazonaws.com |
+| 2026-10-23 13:59 | Destruction | Reussie (6 m 45 s) | Credit preserve |

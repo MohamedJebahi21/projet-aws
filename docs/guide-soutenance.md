@@ -10,7 +10,7 @@
 | **00:00 - 03:00** | **1. Présentation de l'Architecture** | - Présentation du schéma 3-tiers (VPC, ALB, ASG multi-AZ, RDS PostgreSQL, S3, CloudWatch).<br>- Rappel des contraintes du Learner Lab (50$, rôles LabRole, us-east-1). |
 | **03:00 - 06:00** | **2. Démonstration Applicative** | - Connexion à l'URL publique de l'ALB.<br>- Démonstration de l'alternance des requêtes entre `us-east-1a` et `us-east-1b` visible sur le badge de zone.<br>- Création d'un prêt avec génération de reçu PDF archivé dans S3. |
 | **06:00 - 09:00** | **3. Épreuve de Résilience (Live Failure)** | - Lancement du script de flux continu : `python scripts/load_test.py --users 20`.<br>- Terminaison brutale d'une instance EC2 via `python scripts/chaos_inject.py terminate`.<br>- Constat : **Zéro interruption de service**, l'ALB bascule instantanément, l'ASG recrée une VM. |
-| **09:00 - 12:00** | **4. Supervision & Alarmes** | - Affichage du tableau de bord unifié CloudWatch en direct.<br>- Démonstration de l'alarme `biblio-dev-alarm-unhealthy-hosts` ou `high-cpu`. |
+| **09:00 - 12:00** | **4. Supervision & Alarmes** | - Affichage du tableau de bord unifié CloudWatch en direct.<br>- Démonstration de l'alarme `cinetrekker-dev-alarm-unhealthy-hosts` ou `high-cpu`. |
 | **12:00 - 15:00** | **5. Reproductibilité & Destruction** | - Lancement de `scripts/destroy.ps1` : démonstration de la suppression complète.<br>- Preuve du temps de reconstruction chronométré (< 15 min). |
 | **15:00 - 20:00** | **6. Questions / Réponses avec le Jury** | - Défense des décisions d'architecture et justification des choix techniques. |
 
@@ -34,4 +34,4 @@
 > **Réponse** : "L'état Terraform peut être stocké dans un bucket S3 privé chiffré dédié. De plus, notre code d'infrastructure est 100% déterministe et reproductible : en cas de changement de compte porteur, une seule commande `deploy.ps1` recrée l'intégralité de l'environnement depuis zéro sans aucune étape manuelle."
 
 #### Q6 : Comment prouvez-vous que vous n'avez pas cliqué dans la console AWS ?
-> **Réponse** : "Toutes les ressources portent le tag `ManagedBy = Terraform` et le préfixe normalisé `biblio-dev`. La destruction complète puis la reconstruction de bout en bout en une seule commande en moins de 15 minutes démontre que 100% de notre infrastructure est définie en code versionné."
+> **Réponse** : "Toutes les ressources portent le tag `ManagedBy = Terraform` et le préfixe normalisé `cinetrekker-dev`. La destruction complète puis la reconstruction de bout en bout en une seule commande en moins de 15 minutes démontre que 100% de notre infrastructure est définie en code versionné."

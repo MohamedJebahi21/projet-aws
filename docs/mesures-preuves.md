@@ -58,7 +58,7 @@
 * **Cible contractuelle** : RPO de **24 heures** (sauvegarde quotidienne automatique) et RTO de **< 15 minutes**.
 * **Protocole de démonstration** :
   1. Insertion de données (adhérent "Test Backup", livre "Cloud Computing 2026").
-  2. Déclenchement d'un snapshot manuel RDS : `aws rds create-db-snapshot --db-instance-identifier biblio-dev-postgres-db --db-snapshot-identifier demo-backup-1`.
+  2. Déclenchement d'un snapshot manuel RDS : `aws rds create-db-snapshot --db-instance-identifier cinetrekker-dev-postgres-db --db-snapshot-identifier demo-backup-1`.
   3. Simulation d'une altération ou perte de données.
   4. Restauration d'une nouvelle instance RDS depuis le snapshot : `aws rds restore-db-instance-from-db-snapshot`.
 * **Temps mesuré pour la restauration complète** : **10 minutes 50 secondes**.
