@@ -5,6 +5,7 @@
 [![AWS](https://img.shields.io/badge/Cloud-AWS_Learner_Lab-FF9900?logo=amazon-aws)](https://aws.amazon.com/)
 [![React](https://img.shields.io/badge/Frontend-React_19_Vite-61DAFB?logo=react)](https://react.dev/)
 [![NodeJS](https://img.shields.io/badge/Runtime-Node.js_20-339933?logo=node.js)](https://nodejs.org/)
+[![Dépôt Git](https://img.shields.io/badge/GitHub-MohamedJebahi21%2Fprojet--aws-blue?logo=github)](https://github.com/MohamedJebahi21/projet-aws)
 
 ---
 
@@ -13,18 +14,18 @@ Ce projet déploie une **infrastructure web hautement disponible, résiliente et
 
 L'application servant de charge de travail est **CineTrekker**, une plateforme web cinéphile moderne (React 19 / TypeScript / Vite / Node.js) dédiée à l'exploration, au suivi de séries et à la découverte de films.
 
-### Équipe de Projet (5 Étudiants — TEK-UP / ING-4-CIM)
-* **JEBAHI Mohamed** : Lead Développeur Applicatif & Intégration Cloud
-* **LAAMERI Mohamed** : Lead Cloud Architect & IaC Terraform (Réseau & Calcul)
-* **KAHLA Salma** : Ingénieure Sécurité Cloud & Données
-* **CHAIBI Arij** : Ingénieure DevOps & Automatisation CI/CD
-* **KHARRAT Mouheddin** : Ingénieur Supervision & Qualité SRE
+### Équipe de Projet (5 Étudiants — TEK-UP / Promotion ING-4 / Module ING-4-CIM)
+* **JEBAHI Mohamed** : Lead Développeur Applicatif & Intégration Cloud (`mohamed.jebahi21@gmail.com`)
+* **LAAMERI Mohamed** : Lead Cloud Architect & IaC Terraform Réseau/Calcul (`lamerimohamed870@gmail.com`)
+* **KAHLA Salma** : Ingénieure Sécurité Cloud & Données (`salmabenkahla40@gmail.com`)
+* **CHAIBI Arij** : Ingénieure DevOps & Automatisation CI/CD (`arijchaibi51@gmail.com`)
+* **KHARRAT Mouheddin** : Ingénieur Supervision & Qualité SRE (`Mohidinemoha5@gmail.com`)
 
 ---
 
 ## 🏛️ Architecture Technique Déployée par IaC
 
-```
+```text
 [ Internet / Utilisateurs ]
        │
        ▼ (Port 80 HTTP)
@@ -41,10 +42,10 @@ L'application servant de charge de travail est **CineTrekker**, une plateforme w
 
 ## 📂 Structure du Dépôt
 
-```
+```text
 .
-├── LANCER_DEPLOY_AWS.bat         # Batch Windows 1-Clic : Déploiement complet en < 3 minutes
-├── LANCER_DESTROY_AWS.bat        # Batch Windows 1-Clic : Destruction totale ($0.00)
+├── LANCER_DEPLOY_AWS.bat         # Batch Windows 1-Clic : Déploiement complet en < 3m30s
+├── LANCER_DESTROY_AWS.bat        # Batch Windows 1-Clic : Destruction totale en < 3 min ($0.00)
 ├── README.md                     # Documentation d'exploitation et guide de démarrage
 ├── app/                          # Charge de travail applicative CineTrekker
 │   ├── dist/                     # Bundle React 19 / Vite optimisé
@@ -59,17 +60,11 @@ L'application servant de charge de travail est **CineTrekker**, une plateforme w
 │       ├── stockage/             # Bucket S3 privé chiffré SSE-S3 AES-256 pour l'archive
 │       └── calcul/               # ALB public, Target Group /health, Launch Template, ASG multi-AZ
 ├── scripts/                      # Scripts d'automatisation et exploitation
-│   ├── deploy.ps1 / deploy.sh    # Reconstruction complète chronométrée (< 3 minutes)
+│   ├── deploy.ps1 / deploy.sh    # Reconstruction complète chronométrée (< 3 minutes 30s)
 │   ├── destroy.ps1 / destroy.sh  # Destruction propre et arrêt immédiat de la facturation horaire
 │   └── publish_version.ps1       # Rolling Update applicatif sans interruption de service
-└── docs/                         # Dossier d'architecture et livrables d'évaluation
-    ├── L1_cahier_des_charges.md  # Livrable 1 : Sujet, application, composants, objectifs chiffrés
-    ├── L2_architecture.md        # Livrable 2 : Schéma Mermaid, justification 5 axes, estimation coûts
-    ├── L3_infrastructure.md      # Livrable 3 : IaC, justification NAT, procédure de démo live
-    ├── fiche-livrable-1.md       # Fiche officielle L1 complétée avec les rôles des 5 étudiants
-    ├── journal-destructions.md   # Horodatage des cycles hebdomadaires de destruction
-    ├── decisions.md              # Registre des Décisions d'Architecture (ADRs formalisés)
-    └── compte-aws.md             # Fiche de suivi du compte AWS Academy
+└── docs/                         # Documentation officielle et livrables d'évaluation
+    └── Cahier_des_Charges_CineTrekker.docx  # Cahier des charges unifié officiel (L1, L2, L3)
 ```
 
 ---
@@ -93,7 +88,7 @@ L'application servant de charge de travail est **CineTrekker**, une plateforme w
 
 ---
 
-### 2. Reconstruction Complète en Une Seule Commande (Livrable L3)
+### 2. Reconstruction Complète en Une Seule Commande (Livrables L1-L3)
 Depuis la racine du projet, lancez :
 
 * **Sous Windows** : Double-cliquez sur `LANCER_DEPLOY_AWS.bat` ou exécutez dans PowerShell :
@@ -106,7 +101,7 @@ Depuis la racine du projet, lancez :
   ./scripts/deploy.sh
   ```
 
-**Durée totale mesurée** : **~2 à 3 minutes** (au lieu de 15 min, l'application est en ligne immédiatement).  
+**Durée totale mesurée (séance du 28/10/2026)** : **3 min 26 s** (l'application et le Target Group sont opérationnels immédiatement).  
 Le script affiche l'URL publique de l'ALB : `http://<ALB_DNS>` et la route de santé : `http://<ALB_DNS>/health`.
 
 ---
@@ -122,3 +117,5 @@ Pour arrêter immédiatement la facturation horaire et préserver le crédit de 
   ```bash
   ./scripts/destroy.sh
   ```
+
+**Durée totale mesurée** : **2 min 59 s** pour la destruction complète de l'ensemble des 18 ressources AWS.
