@@ -1,5 +1,5 @@
 # DOSSIER D'ARCHITECTURE TECHNIQUE — PROJET AWS 3-TIERS
-**Bibliothèque Universitaire — Infrastructure Cloud Résiliente**
+**CineTrekker Web Platform — Infrastructure Cloud Résiliente**
 
 ---
 
@@ -8,7 +8,7 @@
 ```mermaid
 graph TD
     Client[Utilisateur / Navigateur Web] -->|HTTP Port 80| IGW[Internet Gateway]
-    IGW --> ALB[Application Load Balancer\nSous-réseaux Publics us-east-1a & 1b]
+    IGW --> ALB[1 SEUL Application Load Balancer\nRattaché aux Sous-réseaux Publics 1a & 1b]
 
     subgraph VPC ["VPC Dédié : 10.0.0.0/16 (us-east-1)"]
         subgraph PublicTier ["Niveau Public : 10.0.1.0/24 & 10.0.2.0/24"]
@@ -18,8 +18,8 @@ graph TD
 
         subgraph PrivateAppTier ["Niveau Applicatif Privé : 10.0.11.0/24 & 10.0.12.0/24"]
             ASG[Auto Scaling Group\nMin: 2 / Max: 4 / Desired: 2]
-            EC2_1[Instance EC2 1a\nJavalin : 8080]
-            EC2_2[Instance EC2 1b\nJavalin : 8080]
+            EC2_1[Instance EC2 1a\nCineTrekker Node.js : 8080]
+            EC2_2[Instance EC2 1b\nCineTrekker Node.js : 8080]
             ASG --> EC2_1
             ASG --> EC2_2
         end
@@ -37,7 +37,7 @@ graph TD
     EC2_1 -->|Port 5432\nvia app-sg| RDS
     EC2_2 -->|Port 5432\nvia app-sg| RDS
 
-    EC2_1 -.->|Trafic S3 via Endpoint| S3_Bucket[Bucket S3 Privé Chiffré\n- Artefacts JAR\n- Reçus PDF\n- Secret DB]
+    EC2_1 -.->|Trafic S3 via Endpoint| S3_Bucket[Bucket S3 Privé Chiffré\n- cinetrekker.tar.gz\n- Secret DB]
     EC2_2 -.->|Trafic S3 via Endpoint| S3_Bucket
     EC2_1 -.->|Sortie Internet via NAT| NAT
     EC2_2 -.->|Sortie Internet via NAT| NAT
@@ -102,7 +102,7 @@ Le principe du **moindre privilège réseau** est rigoureusement appliqué : auc
 | **EC2 (`t3.micro`)** | Exécution de l'application | Éligible Free Tier / Learner Lab (~0,0104 $/h). |
 | **EBS gp3** | Disque racine (20 Go) | Volumes chiffrés par défaut, haute performance (3000 IOPS). |
 | **Amazon RDS PostgreSQL** | Persistance relationnelle managée | Moteur PostgreSQL 15, `db.t3.micro`, chiffré, backups automatiques. Multi-AZ désactivé pour respecter le plafond de 50$. |
-| **Amazon S3** | Stockage objet chiffré | Chiffrement SSE-S3 AES-256, accès public 100% bloqué. Stocke les artefacts JAR, les reçus PDF et le secret DB. |
+| **Amazon S3** | Stockage objet chiffré | Chiffrement SSE-S3 AES-256, accès public 100% bloqué. Stocke l'archive applicative `cinetrekker.tar.gz` et le secret DB chiffré. |
 | **CloudWatch** | Logs, métriques et alarmes | Log group rétention 1 jour pour limiter les coûts. 2 alarmes actives déclenchables. Dashboard unifié. |
 
 ---

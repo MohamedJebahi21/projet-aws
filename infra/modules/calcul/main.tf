@@ -102,49 +102,42 @@ resource "aws_launch_template" "app" {
               set -ex
               exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
 
-              echo "=== Demarrage de l'initialisation de l'instance ==="
+              echo "=== Demarrage de l'initialisation de l'instance CineTrekker ==="
 
-              # 1. Mise a jour et installation de Java 17 headless + agent CloudWatch
+              # 1. Mise a jour et installation de Node.js + tar + gzip
               dnf update -y
-              dnf install -y java-17-amazon-corretto-headless amazon-cloudwatch-agent
+              dnf install -y nodejs tar gzip
 
               # 2. Preparation des repertoires applicatifs
-              mkdir -p /opt/app /etc/library
+              mkdir -p /opt/app /etc/cinetrekker
 
-              # 3. Recuperation securisee du secret DB depuis l'objet S3 chiffre
-              echo "Recuperation du mot de passe RDS depuis S3..."
-              DB_SECRET_VAL=$(aws s3 cp s3://${var.bucket_name}/${var.db_secret_key} -)
-
-              cat << ENVFILE > /etc/library/app.env
+              cat << ENVFILE > /etc/cinetrekker/app.env
               PORT=8080
-              DB_HOST=${var.db_host}
-              DB_PORT=${var.db_port}
-              DB_NAME=${var.db_name}
-              DB_USER=${var.db_username}
-              DB_PASSWORD=$DB_SECRET_VAL
               S3_BUCKET_NAME=${var.bucket_name}
               AWS_REGION=us-east-1
+              NODE_ENV=production
               ENVFILE
-              chmod 600 /etc/library/app.env
+              chmod 600 /etc/cinetrekker/app.env
 
-              # 4. Recuperation de l'artefact applicatif JAR depuis S3
-              echo "Recuperation du package JAR depuis S3..."
-              aws s3 cp s3://${var.bucket_name}/${var.app_jar_key} /opt/app/bibliotheque-app.jar
+              # 3. Recuperation et extraction de l'archive applicative CineTrekker depuis S3
+              echo "Recuperation du package CineTrekker depuis S3..."
+              aws s3 cp s3://${var.bucket_name}/${var.app_jar_key} /opt/app/cinetrekker.tar.gz
+              tar -xzf /opt/app/cinetrekker.tar.gz -C /opt/app
 
-              # 5. Creation du service systemd
-              cat << SERVICEFILE > /etc/systemd/system/bibliotheque.service
+              # 4. Creation du service systemd CineTrekker
+              cat << SERVICEFILE > /etc/systemd/system/cinetrekker.service
               [Unit]
-              Description=Application Web Bibliotheque Universitaire 3-Tiers
+              Description=Application Web CineTrekker 3-Tiers
               After=network.target
 
               [Service]
               Type=simple
               User=ec2-user
               WorkingDirectory=/opt/app
-              EnvironmentFile=/etc/library/app.env
-              ExecStart=/usr/bin/java -XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0 -jar /opt/app/bibliotheque-app.jar
+              EnvironmentFile=/etc/cinetrekker/app.env
+              ExecStart=/usr/bin/node /opt/app/server.js
               Restart=always
-              RestartSec=10
+              RestartSec=5
               StandardOutput=journal
               StandardError=journal
 
@@ -152,36 +145,10 @@ resource "aws_launch_template" "app" {
               WantedBy=multi-user.target
               SERVICEFILE
 
-              chown -R ec2-user:ec2-user /opt/app /etc/library
+              chown -R ec2-user:ec2-user /opt/app /etc/cinetrekker
               systemctl daemon-reload
-              systemctl enable bibliotheque.service
-              systemctl start bibliotheque.service
-
-              # 6. Configuration et demarrage de l'agent CloudWatch
-              cat << CWCONFIG > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
-              {
-                "agent": {
-                  "metrics_collection_interval": 60,
-                  "run_as_user": "root"
-                },
-                "logs": {
-                  "logs_collected": {
-                    "files": {
-                      "collect_list": [
-                        {
-                          "file_path": "/var/log/user-data.log",
-                          "log_group_name": "/aws/ec2/${var.prefix}-app",
-                          "log_stream_name": "{instance_id}/user-data"
-                        }
-                      ]
-                    }
-                  }
-                }
-              }
-              CWCONFIG
-
-              /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
-                -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+              systemctl enable cinetrekker.service
+              systemctl start cinetrekker.service
 
               echo "=== Fin de l'initialisation de l'instance avec succes ==="
               EOF
@@ -195,6 +162,14 @@ resource "aws_launch_template" "app" {
     })
   }
 
+  tag_specifications {
+    resource_type = "volume"
+    tags = merge(var.tags, {
+      Name = "${var.prefix}-app-volume"
+      Tier = "Application"
+    })
+  }
+
   tags = merge(var.tags, {
     Name = "${var.prefix}-launch-template"
   })
@@ -204,10 +179,10 @@ resource "aws_launch_template" "app" {
   }
 }
 
-# 6. Auto Scaling Group Multi-AZ en sous-réseaux privés (Minimum 2 instances)
+# 6. Auto Scaling Group Multi-AZ en sous-réseaux privés (Instances réparties sur 2 AZs)
 resource "aws_autoscaling_group" "app" {
   name_prefix         = "${var.prefix}-asg-"
-  min_size            = 2
+  min_size            = 1
   max_size            = 4
   desired_capacity    = 2
   vpc_zone_identifier = var.private_subnet_ids
@@ -219,16 +194,6 @@ resource "aws_autoscaling_group" "app" {
   launch_template {
     id      = aws_launch_template.app.id
     version = "$Latest"
-  }
-
-  # Déploiement progressif sans interruption de service (Rolling update)
-  instance_refresh {
-    strategy = "Rolling"
-    preferences {
-      min_healthy_percentage = 50
-      instance_warmup        = 120
-    }
-    triggers = ["tag"]
   }
 
   tag {

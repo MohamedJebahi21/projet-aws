@@ -14,7 +14,7 @@ variable "public_subnet_ids" {
 }
 
 variable "private_subnet_ids" {
-  description = "Sous-réseaux privés pour l'Auto Scaling Group"
+  description = "Sous-réseaux privés pour l'instance applicative / Auto Scaling Group"
   type        = list(string)
 }
 
@@ -33,37 +33,9 @@ variable "bucket_name" {
   type        = string
 }
 
-variable "db_secret_key" {
-  description = "Clé S3 de l'objet contenant le mot de passe de la DB"
-  type        = string
-}
-
 variable "app_jar_key" {
-  description = "Clé S3 de l'artefact JAR applicatif"
+  description = "Clé S3 de l'archive applicative"
   type        = string
-}
-
-variable "db_host" {
-  description = "Hôte de la base de données RDS"
-  type        = string
-}
-
-variable "db_port" {
-  description = "Port de la base de données RDS"
-  type        = number
-  default     = 5432
-}
-
-variable "db_name" {
-  description = "Nom de la base de données"
-  type        = string
-  default     = "library"
-}
-
-variable "db_username" {
-  description = "Nom d'utilisateur administrateur"
-  type        = string
-  default     = "dbadmin"
 }
 
 variable "tags" {

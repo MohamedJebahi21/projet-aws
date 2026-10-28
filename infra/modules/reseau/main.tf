@@ -168,16 +168,24 @@ resource "aws_instance" "nat" {
   vpc_security_group_ids      = [aws_security_group.nat.id]
   source_dest_check           = false # Obligatoire pour agir comme routeur NAT
   associate_public_ip_address = true
+  iam_instance_profile        = "LabInstanceProfile"
 
-  # Script de configuration automatique du forwarding et de masquerade iptables
+  root_block_device {
+    volume_type = "gp3"
+    volume_size = 8
+    encrypted   = true
+  }
+
+  # Script de configuration automatique du forwarding et de masquerade iptables (compatible AL2023)
   user_data = <<-EOF
               #!/bin/bash
-              echo 1 > /proc/sys/net/ipv4/ip_forward
-              echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
-              iptables -t nat -A POSTROUTING -o $(ip route show default | awk '{print $5}') -j MASQUERADE
-              dnf install -y iptables-services
-              service iptables save
-              systemctl enable iptables
+              sysctl -w net.ipv4.ip_forward=1
+              echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-ipforward.conf
+              dnf install -y iptables-nft
+              DEV=$(ip -4 route show default | awk '{print $5}')
+              iptables -t nat -A POSTROUTING -o $DEV -j MASQUERADE
+              iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+              iptables -A FORWARD -i 10.0.0.0/16 -j ACCEPT
               EOF
 
   tags = merge(var.tags, {
