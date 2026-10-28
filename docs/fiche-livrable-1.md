@@ -5,27 +5,29 @@
 ---
 
 ## 1. Identification
-* **Titre du projet** : Déploiement Résilient d'une Infrastructure Web 3-Tiers pour la Bibliothèque Universitaire
-* **Membres du groupe** :
-  * LAMERI Mohamed (Responsable Cloud / IaC Terraform)
-  * Membre 2 (DevOps / Automatisation)
-  * Membre 3 (Sécurité / Supervision)
-* **Dépôt Git** : `projet-aws-bibliotheque-3tiers` (Dépôt Git local versionné avec arborescence normalisée)
-* **Compte porteur désigné** : Compte principal AWS Academy (`556007578868`), rôle assumé `LabRole`.
-* **Ordre de bascule (failover budget)** : Compte Membre 1 -> Compte Membre 2 -> Compte Membre 3.
+* **Titre du projet** : Déploiement Résilient d'une Infrastructure Web 3-Tiers pour la Plateforme CineTrekker
+* **Membres du groupe (5 étudiants)** :
+  * **JEBAHI Mohamed** (Lead Développeur Applicatif & Intégration Cloud)
+  * **LAAMERI Mohamed** (Lead Cloud Architect & IaC Terraform Réseau/Calcul)
+  * **KAHLA Salma** (Ingénieure Sécurité Cloud & Persistance des Données)
+  * **CHAIBI Arij** (Ingénieure DevOps & Automatisation Déploiement/Destruction)
+  * **KHARRAT Mouheddin** (Ingénieur Supervision, Observabilité SRE & Qualité)
+* **Dépôt Git** : `projet-aws-cinetrekker-3tiers` (Dépôt Git local versionné avec arborescence normalisée)
+* **Compte porteur désigné** : Compte principal AWS Academy (`766734107199`), rôle assumé `LabRole`.
+* **Ordre de bascule (failover budget)** : Compte Mohamed Jebahi -> Compte Mohamed Laameri -> Compte Salma Kahla -> Compte Arij Chaibi -> Compte Mouheddin Kharrat.
 
 ---
 
 ## 2. Description du sujet
 * **Domaine métier et problème traité** :
-  Gestion centralisée et résiliente d'une bibliothèque universitaire (catalogue, adhérents, gestion des emprunts et retours, calcul des retards). La plateforme offre un accès web continu aux étudiants et gestionnaires même en cas de panne matérielle d'une zone de disponibilité.
+  Plateforme web moderne de découverte, suivi et recommandation de films et séries (catalogue dynamique, fiches détaillées, bandes-annonces, recherche multi-critères, listes de visionnage personnalisées). La plateforme offre un accès web continu et fluide aux cinéphiles même en cas de panne matérielle d'une zone de disponibilité.
 * **Application servant de charge de travail** :
-  Application reprise d'un mini-projet de gestion de bibliothèque (Java 17 / Maven), adaptée en architecture Web 3-tiers stateless légère (API REST Javalin + Frontend Web dynamique).
+  Application web monopage moderne développée en React 19 / TypeScript / Vite, servie par un serveur Node.js optimisé en architecture Web 3-tiers stateless hautement disponible avec route de santé (`/health`).
 * **Composants applicatifs et rôle de chacun** :
-  * **Front-end** : Interface Web monopage réactive (HTML5 / Vanilla CSS / JavaScript) affichant en temps réel la zone de disponibilité (AZ) et l'instance EC2 qui répond.
-  * **Back-end / API** : Serveur REST Java léger (Javalin) gérant la logique métier, les contrôles de santé (`/health`), et la génération headless des reçus PDF.
+  * **Front-end** : Interface Web monopage réactive (React 19 / TypeScript / Vite / Tailwind UI) avec mode sombre, carrousels, filtres et lecteur de bandes-annonces.
+  * **Back-end / Serveur Web** : Serveur HTTP Node.js natif léger gérant le routage SPA, la compression, les contrôles de santé (`/health`) et l'accès sécurisé aux données.
   * **Base de données** : Amazon RDS PostgreSQL managé en sous-réseau privé multi-AZ garantissant la persistance relationnelle et l'intégrité transactionnelle.
-  * **Stockage Objet** : Amazon S3 pour l'archivage chiffré des reçus PDF et des artefacts applicatifs.
+  * **Stockage Objet** : Amazon S3 pour l'archivage chiffré des artefacts applicatifs (`cinetrekker.tar.gz`) et des secrets d'infrastructure.
 
 ---
 

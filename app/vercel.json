@@ -1,0 +1,233 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "crons": [
+    {
+      "path": "/api/jobs/check-followed-updates",
+      "schedule": "0 3 * * *"
+    }
+  ],
+  "functions": {
+    "api/edge-meta.js": {
+      "includeFiles": "dist/index.html"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap.js"
+    },
+    {
+      "source": "/api/unfollow",
+      "destination": "/api/follow"
+    },
+    {
+      "source": "/api/enrichment/ratings",
+      "destination": "/api/enrichment?action=ratings"
+    },
+    {
+      "source": "/api/enrichment/tv-schedule",
+      "destination": "/api/enrichment?action=tv-schedule"
+    },
+    {
+      "source": "/api/enrichment/tv-details",
+      "destination": "/api/enrichment?action=tv-details"
+    },
+    {
+      "source": "/api/enrichment/tv-episodes",
+      "destination": "/api/enrichment?action=tv-episodes"
+    },
+    {
+      "source": "/api/notifications/unread-count",
+      "destination": "/api/notifications?action=unread-count"
+    },
+    {
+      "source": "/api/notifications/mark-read",
+      "destination": "/api/notifications?action=mark-read"
+    },
+    {
+      "source": "/movie-tracker",
+      "destination": "/api/edge-meta"
+    },
+    {
+      "source": "/movie/:path*",
+      "destination": "/api/edge-meta"
+    },
+    {
+      "source": "/tv/:path*",
+      "destination": "/api/edge-meta"
+    },
+    {
+      "source": "/person/:path*",
+      "destination": "/api/edge-meta"
+    },
+    {
+      "source": "/((?!api/|assets/|static/|.*\\..*).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/movie/:id/:slug",
+      "destination": "/movie/:slug-:id",
+      "statusCode": 301
+    },
+    {
+      "source": "/tv/:id/:slug",
+      "destination": "/tv/:slug-:id",
+      "statusCode": 301
+    },
+    {
+      "source": "/person/:id/:slug",
+      "destination": "/person/:slug-:id",
+      "statusCode": 301
+    },
+    {
+      "source": "/movies",
+      "destination": "/search?type=movie&sort=popularity.desc",
+      "statusCode": 301
+    },
+    {
+      "source": "/tv",
+      "destination": "/search?type=tv&sort=popularity.desc",
+      "statusCode": 301
+    },
+    {
+      "source": "/upcoming",
+      "destination": "/calendar",
+      "statusCode": 301
+    },
+    {
+      "source": "/watch-history",
+      "destination": "/watched",
+      "statusCode": 301
+    },
+    {
+      "source": "/enhanced-stats",
+      "destination": "/stats",
+      "statusCode": 301
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=31536000; includeSubDomains; preload"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://vercel.live https://va.vercel-scripts.com https://challenges.cloudflare.com https://cloud.umami.is; script-src-elem 'self' https://vercel.live https://va.vercel-scripts.com https://challenges.cloudflare.com https://cloud.umami.is; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob: https://image.tmdb.org https://www.themoviedb.org https://*.supabase.co https:; font-src 'self' data:; worker-src 'self' blob:; manifest-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.themoviedb.org https://vercel.live https://va.vercel-scripts.com https://cloud.umami.is https://gateway.umami.is wss://*.vercel.com; media-src 'self' blob: data:; frame-src 'self' https://www.youtube.com https://player.vimeo.com https://vercel.live https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; require-trusted-types-for 'script'; trusted-types cinetrekker default dompurify; upgrade-insecure-requests; block-all-mixed-content"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "Cross-Origin-Resource-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "Server",
+          "value": ""
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store, no-cache, must-revalidate, proxy-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/((?!api/|assets/|static/|.*\\..*).*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, no-cache, must-revalidate, proxy-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, no-cache, must-revalidate, proxy-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/(apple-touch-icon.*|favicon.*|manifest.*|og-image.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
+    }
+  ]
+}

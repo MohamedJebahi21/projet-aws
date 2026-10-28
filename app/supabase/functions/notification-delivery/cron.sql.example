@@ -1,0 +1,53 @@
+-- CineTrekker notification-delivery schedules (UTC)
+--
+-- Before running this file, deploy the notification-delivery Edge Function, set
+-- NOTIFICATION_DELIVERY_CRON_SECRET as an Edge Function secret, and enable the
+-- pg_cron and pg_net extensions. The function has Verify JWT disabled and uses
+-- its dedicated x-cron-secret credential for scheduler authentication.
+--
+-- Create the two Vault secrets once. Never commit the actual credential.
+--
+-- select vault.create_secret(
+--   'https://YOUR_PROJECT_REF.supabase.co',
+--   'notification_delivery_project_url'
+-- );
+-- select vault.create_secret(
+--   'YOUR_NOTIFICATION_DELIVERY_CRON_SECRET',
+--   'notification_delivery_cron_secret'
+-- );
+--
+-- The pending scan is deliberately modest; delivery-log rows make retries
+-- idempotent. Before re-running this template, remove any existing jobs with
+-- the same names through cron.unschedule(jobid).
+
+select cron.schedule(
+  'cinetrekker-notification-pending-push',
+  '0 */15 * * *',
+  $$
+    select net.http_post(
+      url := (select decrypted_secret from vault.decrypted_secrets where name = 'notification_delivery_project_url') || '/functions/v1/notification-delivery',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'notification_delivery_cron_secret')
+      ),
+      body := '{"mode":"pending_notifications"}'::jsonb
+    );
+  $$
+);
+
+-- Run daily. Each user receives a digest only when their chosen UTC digest_day
+-- matches the current day and they explicitly opted in.
+select cron.schedule(
+  'cinetrekker-weekly-watchlist-digest',
+  '0 0 17 * * *',
+  $$
+    select net.http_post(
+      url := (select decrypted_secret from vault.decrypted_secrets where name = 'notification_delivery_project_url') || '/functions/v1/notification-delivery',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'notification_delivery_cron_secret')
+      ),
+      body := '{"mode":"weekly_digest"}'::jsonb
+    );
+  $$
+);

@@ -1,0 +1,878 @@
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import Settings from "lucide-react/dist/esm/icons/settings";
+import SlidersHorizontal from "lucide-react/dist/esm/icons/sliders-horizontal";
+import Layers from "lucide-react/dist/esm/icons/layers";
+import CalendarDays from "lucide-react/dist/esm/icons/calendar-days";
+import Award from "lucide-react/dist/esm/icons/award";
+import User from "lucide-react/dist/esm/icons/user";
+import Compass from "lucide-react/dist/esm/icons/compass";
+import Film from "lucide-react/dist/esm/icons/film";
+import Bookmark from "lucide-react/dist/esm/icons/bookmark";
+import CheckSquare from "lucide-react/dist/esm/icons/check-square";
+import Check from "lucide-react/dist/esm/icons/check";
+import Trophy from "lucide-react/dist/esm/icons/trophy";
+import Heart from "lucide-react/dist/esm/icons/heart";
+import FolderHeart from "lucide-react/dist/esm/icons/folder-heart";
+import { useQuery } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useMotionIntensityPreference } from "@/hooks/useMotionIntensityPreference";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useUserLists } from "@/contexts/UserListsContext";
+import { profileService } from "@/services/profile";
+import { UserProfileDropdown } from "@/components/UserProfileDropdown";
+import { NotificationBell } from "@/components/NotificationBell";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { changeLanguage, languages } from "@/i18n";
+
+const SearchDropdown = lazy(() =>
+  import("@/components/SearchDropdown").then((mod) => ({
+    default: mod.SearchDropdown,
+  })),
+);
+
+const RemotionAurora = lazy(() =>
+  import("@/components/motion/RemotionAurora").then((mod) => ({
+    default: mod.RemotionAurora,
+  })),
+);
+
+// Grouped navigation for high-fidelity overlays
+const navigationGroups = [
+  {
+    titleKey: "nav.personalLibrary",
+    defaultTitle: "Personal Library",
+    links: [
+      { path: "/", labelKey: "nav.home", defaultLabel: "Home", icon: Compass, descKey: "navDescription.home", defaultDesc: "Your personal feed and tonight's picks." },
+      { path: "/profile", labelKey: "nav.profile", defaultLabel: "Profile", icon: User, descKey: "navDescription.profile", defaultDesc: "Manage your account, rank, and stats." },
+      { path: "/watchlist", labelKey: "nav.watchlist", defaultLabel: "Watchlist", icon: Bookmark, descKey: "navDescription.watchlist", defaultDesc: "Your list of titles to watch." },
+      { path: "/collections", labelKey: "nav.collections", defaultLabel: "Collections", icon: FolderHeart, descKey: "navDescription.collections", defaultDesc: "Curate themed lists worth sharing." },
+      { path: "/watched", labelKey: "nav.watched", defaultLabel: "Watched", icon: CheckSquare, descKey: "navDescription.watched", defaultDesc: "Your logged watch history." },
+      { path: "/following", labelKey: "nav.following", defaultLabel: "Following", icon: User, descKey: "navDescription.following", defaultDesc: "Titles you are tracking for updates." },
+    ],
+  },
+  {
+    titleKey: "nav.community",
+    defaultTitle: "Community",
+    links: [
+      { path: "/people", labelKey: "nav.people", defaultLabel: "People", icon: User, descKey: "navDescription.people", defaultDesc: "Discover public profiles and follow fellow cinephiles." },
+    ],
+  },
+  {
+    titleKey: "nav.discoveryExplore",
+    defaultTitle: "Discovery & Explore",
+    links: [
+      { path: "/discover", labelKey: "nav.discover", defaultLabel: "Discover", icon: Compass, descKey: "navDescription.discover", defaultDesc: "Explore recommendations and releases." },
+      { path: "/trending", labelKey: "nav.trending", defaultLabel: "Trending", icon: Film, descKey: "navDescription.trending", defaultDesc: "What's popular right now." },
+      { path: "/search", labelKey: "nav.search", defaultLabel: "Search", icon: Compass, descKey: "navDescription.search", defaultDesc: "Find movies, series, or people." },
+      { path: "/recommendations", labelKey: "nav.recommendations", defaultLabel: "Recommendations", icon: Film, descKey: "navDescription.recommendations", defaultDesc: "Taste-matched suggestions for your next watch." },
+      { path: "/genres", labelKey: "nav.genres", defaultLabel: "Genres", icon: Layers, descKey: "navDescription.genres", defaultDesc: "Browse by specific film categories." },
+      { path: "/decades", labelKey: "nav.decades", defaultLabel: "Decades", icon: CalendarDays, descKey: "navDescription.decades", defaultDesc: "Travel through cinema history." },
+    ],
+  },
+  {
+    titleKey: "nav.insightsAwards",
+    defaultTitle: "Insights & Awards",
+    links: [
+      { path: "/calendar", labelKey: "nav.calendar", defaultLabel: "Calendar", icon: CalendarDays, descKey: "navDescription.calendar", defaultDesc: "TV schedule and movie release tracker." },
+      { path: "/stats", labelKey: "nav.stats", defaultLabel: "Stats", icon: Award, descKey: "navDescription.stats", defaultDesc: "Detailed analysis of your viewing habits." },
+      { path: "/achievements", labelKey: "nav.achievements", defaultLabel: "Achievements", icon: Award, descKey: "navDescription.achievements", defaultDesc: "Trophies and milestones unlocked." },
+      { path: "/quests", labelKey: "nav.quests", defaultLabel: "Monthly Quests", icon: Trophy, descKey: "navDescription.quests", defaultDesc: "Time-limited challenges and rewards." },
+      { path: "/year-in-review", labelKey: "nav.yearInReview", defaultLabel: "Year In Review", icon: Award, descKey: "navDescription.yearInReview", defaultDesc: "Your personal annual wrapped recap." },
+      { path: "/awards", labelKey: "nav.awards", defaultLabel: "Awards", icon: Award, descKey: "navDescription.awards", defaultDesc: "Browse award winners and nominees." },
+    ],
+  },
+];
+
+// Flat menu links kept for backwards compatibility with currentPageLabel
+const primaryNavigationGroups = navigationGroups.filter((group) => group.titleKey !== "nav.community");
+
+const menuLinks = [
+  { path: "/profile", labelKey: "nav.profile", defaultLabel: "Profile", icon: User },
+  { path: "/discover", labelKey: "nav.discover", defaultLabel: "Discover", icon: Compass },
+  { path: "/watchlist", labelKey: "nav.watchlist", defaultLabel: "Watchlist", icon: Bookmark },
+  { path: "/collections", labelKey: "nav.collections", defaultLabel: "Collections", icon: FolderHeart },
+  { path: "/watched", labelKey: "nav.watched", defaultLabel: "Watched", icon: CheckSquare },
+  { path: "/trending", labelKey: "nav.trending", defaultLabel: "Trending", icon: Film },
+  { path: "/search", labelKey: "nav.search", defaultLabel: "Search", icon: Compass },
+  { path: "/recommendations", labelKey: "nav.recommendations", defaultLabel: "Recommendations", icon: Film },
+  { path: "/calendar", labelKey: "nav.calendar", defaultLabel: "Calendar", icon: CalendarDays },
+  { path: "/stats", labelKey: "nav.stats", defaultLabel: "Stats", icon: Award },
+  { path: "/achievements", labelKey: "nav.achievements", defaultLabel: "Achievements", icon: Award },
+  { path: "/quests", labelKey: "nav.quests", defaultLabel: "Monthly Quests", icon: Trophy },
+  { path: "/genres", labelKey: "nav.genres", defaultLabel: "Genres", icon: Layers },
+  { path: "/decades", labelKey: "nav.decades", defaultLabel: "Decades", icon: CalendarDays },
+  { path: "/awards", labelKey: "nav.awards", defaultLabel: "Awards", icon: Award },
+  { path: "/year-in-review", labelKey: "nav.yearInReview", defaultLabel: "Year In Review", icon: Award },
+  { path: "/following", labelKey: "nav.following", defaultLabel: "Following", icon: User },
+  { path: "/people", labelKey: "nav.people", defaultLabel: "People", icon: User },
+];
+
+function BurgerIcon({ isOpen }: { isOpen: boolean }) {
+  return (
+    <div className="relative flex h-5 w-5 items-center justify-center">
+      <span
+        className={cn(
+          "absolute left-0 right-0 h-0.5 rounded bg-foreground transition-[top,transform] duration-200",
+          isOpen ? "top-[9px] rotate-45" : "top-[4px]",
+        )}
+      />
+      <span
+        className={cn(
+          "absolute left-0 right-0 top-[9px] h-0.5 rounded bg-foreground transition-[opacity,transform] duration-150",
+          isOpen ? "-translate-x-2 opacity-0" : "opacity-100",
+        )}
+      />
+      <span
+        className={cn(
+          "absolute left-0 right-0 h-0.5 rounded bg-foreground transition-[top,transform] duration-200",
+          isOpen ? "top-[9px] -rotate-45" : "top-[14px]",
+        )}
+      />
+    </div>
+  );
+}
+
+export function UnifiedNav() {
+  const { t, i18n } = useTranslation();
+  const { pathname } = useLocation();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
+  const { watched } = useUserLists();
+  const motionIntensity = useMotionIntensityPreference();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
+  const [isDesktopMenuOpen, setIsDesktopMenuOpen] = useState(false);
+  const activeLanguageCode = i18n.resolvedLanguage ?? i18n.language;
+  const activeLanguageLabel =
+    languages.find((language) => language.code === activeLanguageCode)?.name ?? "English";
+  const activeThemeLabel =
+    theme === "dark"
+      ? t("nav.themeDark", "Dark")
+      : theme === "light"
+        ? t("nav.themeLight", "Light")
+        : t("nav.themeOled", "OLED");
+
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: () => profileService.getProfile(user!.id),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const profileImageUrl = useMemo(() => {
+    if (profile?.avatar_url) return profile.avatar_url;
+    if (profile?.profile_photo) return profile.profile_photo;
+    const metadata = user?.user_metadata as Record<string, unknown> | undefined;
+    const candidates = [metadata?.avatar_url, metadata?.picture, metadata?.photo_url];
+    return (
+      candidates.find(
+        (value): value is string => typeof value === "string" && value.trim().length > 0,
+      ) ?? null
+    );
+  }, [profile, user]);
+
+  const moviesWatchedCount = useMemo(() => {
+    return watched.filter((item) => item.mediaType === "movie").length;
+  }, [watched]);
+
+  const levelInfo = useMemo(() => {
+    let name = "Casual Viewer";
+    let nextMilestone = 50;
+    let prevMilestone = 0;
+
+    if (moviesWatchedCount <= 50) {
+      name = t("profile.levelCasualViewer", "Casual Viewer");
+      nextMilestone = 50;
+      prevMilestone = 0;
+    } else if (moviesWatchedCount <= 150) {
+      name = t("profile.levelMovieBuff", "Movie Buff");
+      nextMilestone = 150;
+      prevMilestone = 50;
+    } else if (moviesWatchedCount <= 300) {
+      name = t("profile.levelCinephile", "Cinephile");
+      nextMilestone = 300;
+      prevMilestone = 150;
+    } else {
+      name = t("profile.levelFilmHistorian", "Film Historian");
+      nextMilestone = 600;
+      prevMilestone = 300;
+    }
+
+    const progress = Math.min(
+      100,
+      Math.max(
+        0,
+        ((moviesWatchedCount - prevMilestone) / (nextMilestone - prevMilestone)) * 100
+      )
+    );
+
+    return { name, nextMilestone, progress };
+  }, [moviesWatchedCount, t]);
+
+  useEffect(() => {
+    let frame = 0;
+
+    const update = () => {
+      frame = 0;
+      const next = window.scrollY > 20;
+      setIsScrolled((current) => (current === next ? current : next));
+    };
+
+    const handleScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(update);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+      }
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsDesktopMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const handleOpen = () => {
+      if (window.innerWidth >= 768) {
+        setIsMobileSheetOpen(false);
+        setIsDesktopMenuOpen(true);
+        return;
+      }
+      setIsDesktopMenuOpen(false);
+      setIsMobileSheetOpen(true);
+    };
+
+    window.addEventListener("cinetrekker:open-mobile-menu", handleOpen);
+    return () => window.removeEventListener("cinetrekker:open-mobile-menu", handleOpen);
+  }, []);
+
+  const searchFallback = (
+    <div aria-hidden="true" className="h-11 w-full rounded-xl border border-border/50 bg-card/40" />
+  );
+
+  const currentPageLabel = (() => {
+    if (pathname === "/") return t("nav.home", "Home");
+
+    const routeLabels: Array<{ path: string; label: string }> = [
+      { path: "/settings", label: t("nav.settings", "Settings") },
+      { path: "/login", label: t("nav.signIn", "Sign In") },
+      { path: "/signup", label: t("nav.signUp", "Sign Up") },
+      { path: "/accessibility", label: t("accessibility.title", "Accessibility Settings") },
+      ...menuLinks.map(item => ({ path: item.path, label: t(item.labelKey, item.defaultLabel) })),
+    ];
+
+    const matched = routeLabels
+      .filter((item) => pathname === item.path || pathname.startsWith(`${item.path}/`))
+      .sort((a, b) => b.path.length - a.path.length)[0];
+
+    if (matched) return matched.label;
+
+    const segment = pathname.split("/").filter(Boolean)[0];
+    if (!segment) return t("nav.home", "Home");
+    return segment.charAt(0).toUpperCase() + segment.slice(1);
+  })();
+
+  const mobileNavigationGroups = useMemo(() => {
+    if (user) return primaryNavigationGroups;
+
+    const [personal, community, discovery, insights] = navigationGroups;
+    return [
+      {
+        titleKey: "nav.explore",
+        defaultTitle: "Explore",
+        links: [
+          personal.links[0],
+          ...discovery.links.filter((item) => item.path !== "/recommendations"),
+          insights.links[0],
+          insights.links[5],
+          ...community.links,
+        ],
+      },
+    ];
+  }, [user]);
+
+  return (
+    <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
+      <header
+      role="banner"
+      className={cn(
+        "sticky top-0 left-0 right-0 z-[90] border-b border-border bg-background pt-[env(safe-area-inset-top,0px)] transition-[background-color,box-shadow,border-color] duration-200",
+        isScrolled && "border-border bg-background shadow-sm",
+      )}
+    >
+      <div className="topbar-inner container mx-auto flex h-16 max-w-[84rem] items-center gap-3 px-4 sm:px-6">
+        <Link to="/" className="topbar-brand group flex shrink-0 items-center gap-2.5">
+          <img
+            src="/apple-touch-icon.png"
+            alt="CineTrekker logo"
+            className="h-9 w-9 rounded-xl object-cover shadow-sm ring-1 ring-white/10 sm:h-10 sm:w-10"
+          />
+          <span className="hidden text-[0.95rem] font-semibold tracking-[-0.02em] text-foreground sm:block lg:text-base">
+            {t("common.appName", "CineTrekker")}
+          </span>
+        </Link>
+
+        <div className="topbar-context hidden items-center md:flex">
+          <span className="max-w-[9rem] truncate border-l border-primary/35 pl-3 text-xs font-medium text-muted-foreground sm:max-w-none sm:text-sm">
+            {currentPageLabel}
+          </span>
+        </div>
+
+        <nav aria-label={t("nav.primary", "Primary navigation")} className="hidden shrink-0 items-center gap-1 xl:flex">
+          {[
+            { path: "/discover", labelKey: "nav.discover", defaultLabel: "Discover" },
+            { path: "/watchlist", labelKey: "nav.watchlist", defaultLabel: "Watchlist" },
+            { path: "/watched", labelKey: "nav.watched", defaultLabel: "Watched" },
+          ].map((item) => {
+            const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                aria-current={isActive ? "page" : undefined}
+                className={cn(
+                  "ct-primary-nav-link",
+                  isActive && "ct-primary-nav-link-active",
+                )}
+              >
+                {t(item.labelKey, item.defaultLabel)}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className={cn("topbar-search min-w-0 flex-1", pathname === "/search" && "hidden md:block")}>
+          <Suspense fallback={searchFallback}>
+            <SearchDropdown />
+          </Suspense>
+        </div>
+
+        <div className="topbar-actions ml-auto hidden items-center md:flex">
+          {user ? (
+            <div className="topbar-action-group">
+              <div className="topbar-notification-slot">
+                <NotificationBell />
+              </div>
+              <UserProfileDropdown
+                profilePhoto={profileImageUrl}
+                displayName={profile?.display_name ?? undefined}
+              />
+            </div>
+          ) : (
+            <div className="topbar-action-group">
+            <Button asChild variant="ghost" size="icon" className="topbar-icon-button">
+              <Link to="/login" aria-label={t("nav.signIn", "Sign In")}>
+                <User className="h-5 w-5" />
+              </Link>
+            </Button>
+            </div>
+          )}
+
+          <div className="topbar-divider" aria-hidden="true" />
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-10 gap-2 rounded-xl border-border/70 bg-card/65 px-3 text-xs font-semibold text-foreground shadow-sm transition-[background-color,border-color,box-shadow] hover:border-primary/30 hover:bg-primary/5 hover:shadow-md"
+                aria-label={t("nav.preferences", "Preferences")}
+              >
+                <SlidersHorizontal className="h-4 w-4 text-primary" aria-hidden="true" />
+                <span className="hidden lg:inline">{t("nav.preferences", "Preferences")}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              sideOffset={10}
+              className="w-[17.5rem] overflow-hidden rounded-2xl border-border/60 bg-popover p-1.5 shadow-[0_22px_56px_hsl(var(--background)/0.45)]"
+            >
+              <div className="px-2.5 pb-2 pt-1.5">
+                <p className="text-sm font-bold tracking-tight text-foreground">{t("preferences.quickControls", "Quick controls")}</p>
+                <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                  {t("preferences.quickControlsDescription", "Tune your viewing space without leaving this page.")}
+                </p>
+              </div>
+              <DropdownMenuItem asChild className="min-h-[3.25rem] cursor-pointer rounded-xl px-2.5 py-2 font-medium focus:bg-accent">
+                <Link to="/settings" className="flex w-full items-center gap-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background text-primary">
+                    <Settings className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">{t("nav.settings", "Settings")}</span>
+                    <span className="block truncate text-[11px] font-normal text-muted-foreground">{t("preferences.settingsDescription", "Account, privacy, and notifications")}</span>
+                  </span>
+                </Link>
+              </DropdownMenuItem>
+              <div className="my-1.5 border-t border-border/70" />
+              <p className="px-2.5 pb-1 pt-0.5 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                {t("preferences.appearanceAndLanguage", "Appearance and language")}
+              </p>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="min-h-11 rounded-xl px-2.5 py-2 focus:bg-accent data-[state=open]:bg-accent">
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-sm font-semibold">{t("nav.changeLanguage", "Language")}</span>
+                    <span className="mt-0.5 text-[11px] font-normal text-muted-foreground">{activeLanguageLabel}</span>
+                  </span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="min-w-[14rem] rounded-2xl border-border/60 bg-popover p-1.5 shadow-[0_18px_48px_hsl(var(--background)/0.42)]">
+                  <p className="px-2.5 pb-1 pt-0.5 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    {t("nav.changeLanguage", "Language")}
+                  </p>
+                  <DropdownMenuRadioGroup value={activeLanguageCode} onValueChange={(code) => void changeLanguage(code)}>
+                    {languages.map((language) => (
+                      <DropdownMenuRadioItem key={language.code} value={language.code} className="min-h-10 rounded-xl py-2 text-sm font-medium focus:bg-accent">
+                        {language.name}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="min-h-11 rounded-xl px-2.5 py-2 focus:bg-accent data-[state=open]:bg-accent">
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-sm font-semibold">{t("nav.changeTheme", "Theme")}</span>
+                    <span className="mt-0.5 text-[11px] font-normal text-muted-foreground">{activeThemeLabel}</span>
+                  </span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="min-w-[15rem] rounded-2xl border-border/60 bg-popover p-1.5 shadow-[0_18px_48px_hsl(var(--background)/0.42)]">
+                  <p className="px-2.5 pb-1 pt-0.5 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    {t("nav.changeTheme", "Theme")}
+                  </p>
+                  <div className="space-y-1">
+                    {(["dark", "light", "oled"] as const).map((option) => {
+                      const label =
+                        option === "dark"
+                          ? t("nav.themeDark", "Dark")
+                          : option === "light"
+                            ? t("nav.themeLight", "Light")
+                            : t("nav.themeOled", "OLED");
+                      const description =
+                        option === "dark"
+                          ? t("preferences.themeDarkDescription", "Balanced for low-light viewing")
+                          : option === "light"
+                            ? t("preferences.themeLightDescription", "Bright, high-clarity interface")
+                            : t("preferences.themeOledDescription", "Pure black for OLED displays");
+                      const isSelected = theme === option;
+
+                      return (
+                        <DropdownMenuItem
+                          key={option}
+                          onSelect={() => setTheme(option)}
+                          className={cn(
+                            "min-h-[3.5rem] cursor-pointer rounded-xl px-3 py-2 focus:bg-accent",
+                            isSelected && "bg-primary/10 text-foreground focus:bg-primary/12",
+                          )}
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-semibold">{label}</span>
+                            <span className="mt-0.5 block text-[11px] font-normal leading-4 text-muted-foreground">{description}</span>
+                          </span>
+                          {isSelected && (
+                            <span className="ml-3 inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-primary">
+                              <Check className="h-3.5 w-3.5" />
+                              {t("preferences.currentTheme", "Current")}
+                            </span>
+                          )}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </div>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button
+            variant="outline"
+            size="icon"
+            className="topbar-menu-button relative"
+            onClick={() => setIsDesktopMenuOpen((current) => !current)}
+            aria-label={isDesktopMenuOpen ? t("common.close", "Close") : t("nav.menu", "Menu")}
+            aria-expanded={isDesktopMenuOpen}
+            aria-controls="desktop-menu-overlay"
+          >
+            <BurgerIcon isOpen={isDesktopMenuOpen} />
+          </Button>
+        </div>
+
+        <div className="ml-auto flex items-center gap-1 md:hidden">
+          {user && <NotificationBell />}
+          <SheetTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-11 w-11"
+              aria-label={isMobileSheetOpen ? t("common.close", "Close") : t("nav.menu", "Menu")}
+            >
+              <BurgerIcon isOpen={isMobileSheetOpen} />
+            </Button>
+          </SheetTrigger>
+        </div>
+      </div>
+
+      {typeof document !== "undefined" && isDesktopMenuOpen
+        ? createPortal(
+            <div
+              id="desktop-menu-overlay"
+              className="fixed bottom-0 left-0 right-0 top-[calc(4rem+env(safe-area-inset-top,0px))] z-40 hidden md:block"
+              role="dialog"
+              aria-label={t("nav.menu", "Menu")}
+              aria-modal="true"
+            >
+              <button
+                type="button"
+                className="absolute inset-0 z-10 bg-black/40"
+                aria-label={t("common.close", "Close")}
+                onClick={() => setIsDesktopMenuOpen(false)}
+              />
+
+              <div className="relative z-20 h-full w-full overflow-y-auto border-t border-border bg-background px-4 py-6 shadow-none motion-safe:animate-fade-in sm:px-6 sm:py-8">
+                <div className="desktop-menu-shell mx-auto flex min-h-full max-w-[78rem] items-center">
+                  <nav aria-label={t("nav.main", "Main navigation")} className="desktop-menu-grid grid w-full gap-5 md:grid-cols-3">
+                    {primaryNavigationGroups.map((group) => (
+                      <section key={group.titleKey} className="desktop-menu-group min-w-0 self-stretch rounded-2xl border border-border/60 bg-card/75 p-5 shadow-sm backdrop-blur-md transition-all">
+                        <div className="mb-3.5 flex items-center justify-between gap-3 border-b border-border/50 pb-2.5">
+                          <h3 className="text-[0.7rem] font-bold uppercase tracking-[0.17em] text-primary">{t(group.titleKey, group.defaultTitle)}</h3>
+                          <span className="rounded-full bg-muted/80 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{group.links.length}</span>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          {group.links.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = pathname === item.path;
+                            return (
+                              <div key={item.path} className="motion-safe:animate-slide-up">
+                                <Link
+                                  to={item.path}
+                                  onClick={() => setIsDesktopMenuOpen(false)}
+                                  aria-current={isActive ? "page" : undefined}
+                                  className={cn(
+                                    "group relative flex min-h-[3.5rem] items-start gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm transition-all duration-150 hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                                    isActive && "border-primary/25 bg-primary/10 text-primary shadow-sm"
+                                  )}
+                                >
+                                  <div className={cn(
+                                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-all duration-150 group-hover:bg-primary group-hover:text-primary-foreground group-hover:shadow-sm",
+                                    isActive && "bg-primary text-primary-foreground shadow-sm"
+                                  )}>
+                                    <Icon className="h-4 w-4" aria-hidden="true" />
+                                  </div>
+                                  <div className="min-w-0 flex-1 pt-0.5">
+                                    <p className={cn("text-sm font-semibold leading-5 text-foreground transition-colors duration-200 group-hover:text-primary", isActive && "text-primary")}>
+                                      {t(item.labelKey, item.defaultLabel)}
+                                    </p>
+                                    <p className="mt-0.5 line-clamp-1 text-xs font-normal leading-4 text-muted-foreground">{t(item.descKey, item.defaultDesc)}</p>
+                                  </div>
+                                </Link>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ))}
+                  </nav>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+
+      <SheetContent
+          id="mobile-menu-panel"
+          side="right"
+          showCloseButton={false}
+          overlayClassName="top-[calc(4rem+env(safe-area-inset-top,0px))]"
+          className="safe-area-insets top-[calc(4rem+env(safe-area-inset-top,0px))] h-[calc(100dvh-4rem-env(safe-area-inset-top,0px))] w-full max-w-none overflow-y-auto border-l-0 bg-background px-0 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-4 sm:w-[24rem] sm:border-l sm:pt-[max(1rem,env(safe-area-inset-top,0px))]"
+        >
+          <div className="relative z-10 px-4 pb-8 motion-safe:animate-fade-in sm:px-5">
+            <SheetHeader className="border-b border-border/60 px-1 pb-4 text-left">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <img
+                    src="/apple-touch-icon.png"
+                    alt="CineTrekker"
+                    className="h-8 w-8 rounded-xl object-cover shadow-sm ring-1 ring-white/10 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <SheetTitle className="text-lg font-bold tracking-tight">{t("nav.menu", "Menu")}</SheetTitle>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {t("nav.mobileSubtitle", "Browse tools and extra pages live here.")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </SheetHeader>
+
+            <nav aria-label={t("nav.main", "Main navigation")}>
+              <div className="mt-5 space-y-5">
+              {/* User Profile Progress Card inside Mobile Menu */}
+              {user && (
+                <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card/90 to-primary/[0.04] p-4 shadow-sm backdrop-blur-md motion-safe:animate-slide-up">
+                  <div className="flex items-center gap-3 relative z-10">
+                    <div className="relative shrink-0">
+                      {profileImageUrl ? (
+                        <img
+                          src={profileImageUrl}
+                          alt="Avatar"
+                          className="h-11 w-11 rounded-full object-cover ring-2 ring-primary/20 shadow-sm"
+                        />
+                      ) : (
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted/80 ring-2 ring-border text-muted-foreground">
+                          <User className="h-5 w-5" />
+                        </div>
+                      )}
+                      <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-background" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] text-primary font-bold uppercase tracking-wider">{t("profile.cinephileMilestones", "Trek Progress")}</p>
+                      <h4 className="text-sm font-bold text-foreground truncate">{profile?.display_name || user.email}</h4>
+                    </div>
+                    <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[9px] font-bold uppercase text-primary tracking-wider shrink-0">
+                      {levelInfo.name}
+                    </span>
+                  </div>
+                  <div className="mt-3 relative z-10">
+                    <div className="flex justify-between text-[11px] text-muted-foreground mb-1.5 font-medium">
+                      <span>{moviesWatchedCount} {moviesWatchedCount === 1 ? "movie" : "movies"}</span>
+                      <span>Next milestone: {levelInfo.nextMilestone}</span>
+                    </div>
+                    <div className="h-2 w-full bg-muted/80 rounded-full overflow-hidden border border-border/40 p-[1px]">
+                      <div
+                        className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all duration-300"
+                        style={{ width: `${levelInfo.progress}%` }}
+                      />
+                    </div>
+                  </div>
+                  {/* Quick shortcuts to Watchlist, Watched, and Profile */}
+                  <div className="mt-3.5 pt-3 border-t border-border/50 grid grid-cols-3 gap-1.5 relative z-10">
+                    <Link
+                      to="/watchlist"
+                      onClick={() => setIsMobileSheetOpen(false)}
+                      className="flex flex-col items-center justify-center rounded-xl bg-background/50 hover:bg-background/90 py-1.5 px-1 text-center transition-colors border border-border/40"
+                    >
+                      <Bookmark className="h-3.5 w-3.5 text-primary mb-0.5" />
+                      <span className="text-[10px] font-semibold text-foreground">{t("nav.watchlist", "Watchlist")}</span>
+                    </Link>
+                    <Link
+                      to="/watched"
+                      onClick={() => setIsMobileSheetOpen(false)}
+                      className="flex flex-col items-center justify-center rounded-xl bg-background/50 hover:bg-background/90 py-1.5 px-1 text-center transition-colors border border-border/40"
+                    >
+                      <CheckSquare className="h-3.5 w-3.5 text-primary mb-0.5" />
+                      <span className="text-[10px] font-semibold text-foreground">{t("nav.watched", "Watched")}</span>
+                    </Link>
+                    <Link
+                      to="/profile"
+                      onClick={() => setIsMobileSheetOpen(false)}
+                      className="flex flex-col items-center justify-center rounded-xl bg-background/50 hover:bg-background/90 py-1.5 px-1 text-center transition-colors border border-border/40"
+                    >
+                      <User className="h-3.5 w-3.5 text-primary mb-0.5" />
+                      <span className="text-[10px] font-semibold text-foreground">{t("nav.profile", "Profile")}</span>
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {/* Guest CTA card */}
+              {!user && (
+                <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.08] via-card to-card p-4 text-center shadow-sm motion-safe:animate-slide-up">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/15 text-primary mb-2.5">
+                    <Compass className="h-5 w-5" />
+                  </div>
+                  <h4 className="text-sm font-bold text-foreground">{t("home.makeEveryVisitPersonal", "Make every visit personal")}</h4>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-[17rem] mx-auto leading-relaxed">{t("home.createAccountSyncDesc", "Create a free account to sync watchlist & ratings.")}</p>
+                  <div className="mt-3.5 flex gap-2 justify-center">
+                    <Button asChild size="sm" className="h-9 px-4 rounded-xl font-semibold text-xs shadow-sm">
+                      <Link to="/signup" onClick={() => setIsMobileSheetOpen(false)}>{t("home.createFreeAccount", "Register")}</Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline" className="h-9 px-4 rounded-xl font-semibold text-xs border-border/70 hover:bg-accent">
+                      <Link to="/login" onClick={() => setIsMobileSheetOpen(false)}>{t("nav.signIn", "Sign In")}</Link>
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Guest visitors see discovery essentials first; signed-in users retain their full personal workspace. */}
+              {mobileNavigationGroups.map((group) => (
+                <div key={group.titleKey} className="space-y-2 border-t border-border/60 pt-4">
+                  <div className="flex items-center justify-between px-1">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                      {t(group.titleKey, group.defaultTitle)}
+                    </p>
+                    <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
+                      {group.links.length}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    {group.links.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = pathname === item.path;
+                      return (
+                        <div key={item.path} className="motion-safe:animate-slide-up">
+                          <Link
+                            to={item.path}
+                            onClick={() => setIsMobileSheetOpen(false)}
+                            className={cn(
+                              "group relative flex items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm font-semibold transition-all duration-150 hover:bg-muted/70",
+                              isActive
+                                ? "border-primary/25 bg-primary/10 text-primary shadow-sm"
+                                : "text-foreground hover:text-foreground",
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+                                isActive
+                                  ? "bg-primary text-primary-foreground shadow-sm"
+                                  : "bg-muted/80 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary",
+                              )}
+                            >
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={cn("text-sm font-semibold truncate", isActive ? "text-primary" : "text-foreground")}>
+                                {t(item.labelKey, item.defaultLabel)}
+                              </p>
+                            </div>
+                            {isActive && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
+                            )}
+                          </Link>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {!user && (
+                <section className="space-y-2 border-t border-border/60 pt-4" aria-label={t("nav.accountOnly", "Your account")}>
+                  <p className="px-1 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                    {t("nav.accountOnly", "Your account")}
+                  </p>
+                  <p className="px-1 text-xs leading-5 text-muted-foreground">
+                    {t("nav.accountOnlyDescription", "Sign in to unlock your watchlist, progress, collections, recommendations, and viewing stats.")}
+                  </p>
+                </section>
+              )}
+
+              {/* Quick Controls, Theme, Language & Settings Section */}
+              <div className="space-y-3 border-t border-border/60 pt-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground px-1">
+                  {t("preferences.quickControls", "Quick controls")}
+                </p>
+
+                {/* Mobile Theme Switcher */}
+                <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5">
+                  <div className="flex items-center justify-between mb-2 px-1">
+                    <span className="text-xs font-semibold text-foreground">{t("nav.changeTheme", "Theme")}</span>
+                    <span className="text-[10px] text-muted-foreground font-medium">{activeThemeLabel}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(["dark", "light", "oled"] as const).map((option) => {
+                      const isSelected = theme === option;
+                      const label =
+                        option === "dark"
+                          ? t("nav.themeDark", "Dark")
+                          : option === "light"
+                            ? t("nav.themeLight", "Light")
+                            : t("nav.themeOled", "OLED");
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => setTheme(option)}
+                          className={cn(
+                            "flex items-center justify-center gap-1.5 rounded-lg py-1.5 px-2 text-xs font-semibold transition-all",
+                            isSelected
+                              ? "border border-primary/30 bg-primary/15 text-primary shadow-sm"
+                              : "border border-transparent bg-background/60 text-muted-foreground hover:bg-background hover:text-foreground",
+                          )}
+                        >
+                          {isSelected && <Check className="h-3 w-3 text-primary shrink-0" />}
+                          <span>{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="motion-safe:animate-slide-up">
+                  <Link
+                    to="/settings"
+                    onClick={() => setIsMobileSheetOpen(false)}
+                    className="flex min-h-[44px] items-center gap-3 rounded-xl border border-border/60 bg-card px-3.5 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-all hover:bg-muted"
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                      <Settings className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold leading-tight">{t("nav.settings", "Settings")}</p>
+                      <p className="truncate text-[11px] font-normal text-muted-foreground mt-0.5">{t("preferences.settingsDescription", "Account, privacy, and notifications")}</p>
+                    </div>
+                  </Link>
+                </div>
+                {user ? (
+                  <div className="motion-safe:animate-slide-up pt-1">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setIsMobileSheetOpen(false);
+                        await signOut();
+                        navigate("/", { replace: true });
+                      }}
+                      className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-destructive/25 bg-destructive/10 px-4 py-2.5 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/15"
+                    >
+                      <User className="h-4 w-4 shrink-0" />
+                      {t("nav.signOut", "Sign Out")}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="motion-safe:animate-slide-up pt-1">
+                    <Link
+                      to="/login"
+                      onClick={() => setIsMobileSheetOpen(false)}
+                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/15"
+                    >
+                      <User className="h-4 w-4 shrink-0" />
+                      {t("nav.signIn", "Sign In")}
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          </nav>
+          </div>
+        </SheetContent>
+      </header>
+    </Sheet>
+  );
+}

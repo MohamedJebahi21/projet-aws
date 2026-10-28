@@ -1,0 +1,241 @@
+import React, { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import {
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandShortcut,
+  CommandSeparator,
+} from "@/components/ui/command";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { searchMulti } from "@/services/tmdb";
+import { useCollections } from "@/hooks/useCollections";
+import { useContentPolicy } from "@/contexts/content-policy-context";
+import { applySafetyFilter } from "@/lib/contentFilter";
+import { Media } from "@/types/media";
+import { socialService, type DirectoryProfile } from "@/services/social";
+
+export default function CommandPalette() {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { toggle: toggleTheme } = useTheme();
+  const { signOut } = useAuth();
+  const { strictFiltering, moderateFiltering } = useContentPolicy();
+  const includeAdult = !(strictFiltering || moderateFiltering);
+  const { data: collectionsResult } = useCollections();
+  const collections = collectionsResult?.data ?? [];
+  const safeCollections = (
+    Array.isArray(collections) ? (collections as unknown[]) : []
+  ).filter((value) => {
+    return (
+      !!value &&
+      typeof value === "object" &&
+      "id" in value &&
+      "name" in value &&
+      (typeof (value as { id?: unknown }).id === "string" ||
+        typeof (value as { id?: unknown }).id === "number") &&
+      typeof (value as { name?: unknown }).name === "string"
+    );
+  }) as Array<{ id: string | number; name: string }>;
+
+  // Global shortcut
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+      if (
+        (isMac && e.metaKey && e.key.toLowerCase() === "k") ||
+        (!isMac && e.ctrlKey && e.key.toLowerCase() === "k")
+      ) {
+        e.preventDefault();
+        setOpen((o) => !o);
+      }
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const onAppEscape = () => setOpen(false);
+    window.addEventListener("app:escape", onAppEscape as EventListener);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("app:escape", onAppEscape as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      const frameId = window.requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+      return () => window.cancelAnimationFrame(frameId);
+    } else {
+      setQuery("");
+    }
+  }, [open]);
+
+  const { data: searchResults = [], isFetching } = useQuery({
+    queryKey: ["cmdk-search", query, includeAdult],
+    queryFn: async () => {
+      if (!query || query.length < 2) return [];
+      const res = await searchMulti(query, 1, "en", includeAdult);
+      return applySafetyFilter(
+        res.results || [],
+        strictFiltering,
+        moderateFiltering,
+      );
+    },
+    enabled: query.length >= 2,
+    staleTime: 1000 * 60 * 5,
+  });
+  const { data: memberResults = [], isFetching: isFetchingMembers } = useQuery({
+    queryKey: ["cmdk-member-search", query],
+    queryFn: () => socialService.searchDiscoverableProfiles(query.trim()),
+    enabled: query.trim().length >= 2,
+    staleTime: 1000 * 60,
+  });
+  const trimmedQuery = query.trim();
+  const hasSearchQuery = trimmedQuery.length >= 2;
+  const isSearching = isFetching || isFetchingMembers;
+
+  const onSelectMember = (profile: DirectoryProfile) => {
+    setOpen(false);
+    navigate(`/user/${profile.user_id}`);
+  };
+
+  const onSelectMedia = (item: Media) => {
+    setOpen(false);
+    if (!item) return;
+    const mediaType = (item as { media_type?: string }).media_type;
+    const type =
+      mediaType === "person"
+        ? "person"
+        : mediaType || (item.title ? "movie" : "tv");
+    if (type === "person") navigate(`/person/${item.id}`);
+    else navigate(`/${type}/${item.id}`);
+  };
+
+  return (
+    <CommandDialog open={open} onOpenChange={setOpen}>
+      <div className="w-[min(680px,92vw)]">
+        <CommandInput
+          ref={inputRef}
+          placeholder={t(
+            "commandPalette.placeholder",
+            "Search titles, contributors, members, collections... (Cmd/Ctrl+K)",
+          )}
+          onValueChange={(val: string) => setQuery(val)}
+        />
+        <CommandList>
+          <CommandEmpty>
+            {hasSearchQuery
+              ? t("commandPalette.empty", "No results")
+              : t("commandPalette.startTyping", "Type at least 2 characters to search.")}
+          </CommandEmpty>
+
+          <CommandGroup heading={t("commandPalette.actions", "Actions")}>
+            <CommandItem
+              onSelect={() => {
+                toggleTheme();
+                setOpen(false);
+              }}
+            >
+              {t("commandPalette.cycleTheme", "Cycle Theme")}
+              <CommandShortcut>{t("commandPalette.themeShortcut", "theme")}</CommandShortcut>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                navigate("/watchlist");
+                setOpen(false);
+              }}
+            >
+              {t("commandPalette.goToWatchlist", "Go to Watchlist")}
+            </CommandItem>
+            <CommandItem
+              onSelect={async () => {
+                await signOut();
+                navigate("/");
+                setOpen(false);
+              }}
+            >
+              {t("commandPalette.logout", "Logout")}
+            </CommandItem>
+          </CommandGroup>
+
+          <CommandSeparator />
+
+          <CommandGroup heading={t("commandPalette.collections", "Collections")}>
+            <CommandItem
+              onSelect={() => {
+                navigate("/collections");
+                setOpen(false);
+              }}
+            >
+              {t("commandPalette.openCollections", "Open collections")}
+            </CommandItem>
+            {safeCollections.length === 0 && (
+              <CommandItem disabled>
+                {t("commandPalette.noCollections", "No collections")}
+              </CommandItem>
+            )}
+            {safeCollections.map((c) => (
+              <CommandItem
+                key={c.id}
+                onSelect={() => {
+                  navigate(`/collections/${c.id}`);
+                  setOpen(false);
+                }}
+              >
+                {c.name}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+
+          <CommandSeparator />
+
+          <CommandGroup heading={t("commandPalette.searchResults", "Search Results")}>
+            {!hasSearchQuery && (
+              <CommandItem disabled>
+                {t("commandPalette.searchHint", "Search titles, people, and collections from here.")}
+              </CommandItem>
+            )}
+            {hasSearchQuery && isSearching && (
+              <CommandItem disabled>
+                {t("commandPalette.searching", "Searching...")}
+              </CommandItem>
+            )}
+            {!isSearching &&
+              memberResults.slice(0, 3).map((profile) => (
+                <CommandItem
+                  key={`user-${profile.user_id}`}
+                  onSelect={() => onSelectMember(profile)}
+                >
+                  {profile.display_name || "CineTrekker User"}
+                  <CommandShortcut>Member</CommandShortcut>
+                </CommandItem>
+              ))}
+            {!isSearching &&
+              searchResults.slice(0, 10).map((r: Media) => (
+                <CommandItem
+                  key={`${r.id}-${r.media_type || "m"}`}
+                  onSelect={() => onSelectMedia(r)}
+                >
+                  {r.title || r.name}
+                  <CommandShortcut>
+                    {r.media_type || (r.title ? t("common.movie", "Movie") : t("common.tvShow", "TV Show"))}
+                  </CommandShortcut>
+                </CommandItem>
+              ))}
+          </CommandGroup>
+        </CommandList>
+      </div>
+    </CommandDialog>
+  );
+}
+/* Duplicate alternative implementation removed — keep the primary CommandPalette above. */
