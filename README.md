@@ -64,7 +64,9 @@ L'application servant de charge de travail est **CineTrekker**, une plateforme w
 │   ├── destroy.ps1 / destroy.sh  # Destruction propre et arrêt immédiat de la facturation horaire
 │   └── publish_version.ps1       # Rolling Update applicatif sans interruption de service
 └── docs/                         # Documentation officielle et livrables d'évaluation
-    └── Cahier_des_Charges_CineTrekker.docx  # Cahier des charges unifié officiel (L1, L2, L3)
+    ├── Cahier_des_Charges_CineTrekker.docx       # Cahier des charges unifié officiel (L1, L2, L3)
+    ├── Presentation_Soutenance_CineTrekker.pptx  # Support officiel de soutenance orale (15 min)
+    └── journal-destructions.md                   # Journal chronométré des déploiements et destructions
 ```
 
 ---
