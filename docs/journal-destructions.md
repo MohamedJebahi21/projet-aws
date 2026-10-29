@@ -14,3 +14,5 @@ Conformément à la règle d'exploitation du projet, toute ressource facturée �
 | 2026-10-28 18:24 | Destruction L1-L3 | Reussie (2 m 59 s) | Crédit préservé ($0.00 en cours) |
 | 2026-10-29 11:00 | Reconstruction L1-L3 | Reussie (3 m 27 s) | http://cinetrekker-dev-alb-1658688166.us-east-1.elb.amazonaws.com |
 | 2026-10-29 12:57 | Destruction L1-L3 | Reussie (2 m 29 s) | Credit preserve |
+| 2026-10-29 14:14 | Reconstruction L1-L3 | Reussie (3 m 41 s) | http://cinetrekker-dev-alb-1042397151.us-east-1.elb.amazonaws.com |
+| 2026-10-29 16:00 | Destruction L1-L3 | Reussie (2 m 47 s) | Credit preserve |
